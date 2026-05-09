@@ -1,0 +1,90 @@
+# Dependencies
+node_modules/
+bower_components/
+vendor/
+.pnpm-store/
+
+# Python environments
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Caches
+.cache/
+.npm/
+.yarn/
+.pnp.*
+*.eslintcache
+.parcel-cache/
+.turbo/
+.next/
+.nuxt/
+.svelte-kit/
+.astro/
+
+# Databases / large data
+*.db
+*.sqlite
+*.sqlite3
+*.sql.gz
+*.dump
+*.rdb
+dump.rdb
+
+# Logs
+*.log
+*.log.*
+logs/
+log/
+
+# Binaries / compiled
+*.so
+*.dylib
+*.dll
+*.exe
+*.bin
+*.out
+*.a
+*.o
+
+# Archives
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.zip
+*.7z
+*.rar
+*.gz
+*.tgz
+
+# Secrets (belt-and-suspenders — they shouldn't be in backup dirs anyway)
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# Browser binaries
+google/chrome/
+firefox/
+
+# Docker volumes / overlays
+overlay2/
+volumes/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini

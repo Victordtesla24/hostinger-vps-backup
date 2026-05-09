@@ -1,0 +1,5 @@
+0 3 * * 0 /root/parity-validate.sh > /var/log/parity-validate-$(date +\%F).log 2>&1
+
+# VPS maintenance — GC at 02:00, Backup at 02:30 daily
+0 2 * * * /root/scripts/vps-maintenance/gc.sh >> /var/log/vps-gc.log 2>&1
+30 2 * * * /root/scripts/vps-maintenance/backup.sh >> /var/log/vps-backup.log 2>&1

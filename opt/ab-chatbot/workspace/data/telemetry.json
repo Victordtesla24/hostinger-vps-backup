@@ -1,0 +1,207 @@
+{
+  "actions": [
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T07:51:52.148Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T07:52:12.284Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T07:52:52.142Z"
+    },
+    {
+      "action": "create",
+      "section": "events",
+      "timestamp": "2026-04-04T07:52:53.084Z"
+    },
+    {
+      "action": "update",
+      "section": "events",
+      "timestamp": "2026-04-04T07:52:54.223Z"
+    },
+    {
+      "action": "delete",
+      "section": "events",
+      "timestamp": "2026-04-04T07:52:55.181Z"
+    },
+    {
+      "action": "create",
+      "section": "sponsors",
+      "timestamp": "2026-04-04T07:52:56.260Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T07:53:12.229Z"
+    },
+    {
+      "action": "delete",
+      "section": "sponsors",
+      "timestamp": "2026-04-04T07:53:14.307Z"
+    },
+    {
+      "action": "upload",
+      "section": "media",
+      "timestamp": "2026-04-04T07:53:15.227Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T07:54:43.799Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T08:01:44.223Z"
+    },
+    {
+      "action": "create",
+      "section": "events",
+      "timestamp": "2026-04-04T08:02:01.675Z"
+    },
+    {
+      "action": "update",
+      "section": "events",
+      "timestamp": "2026-04-04T08:02:02.668Z"
+    },
+    {
+      "action": "delete",
+      "section": "events",
+      "timestamp": "2026-04-04T08:02:03.688Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T08:03:52.753Z"
+    },
+    {
+      "action": "upload",
+      "section": "media",
+      "timestamp": "2026-04-04T08:03:53.688Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T08:08:37.458Z"
+    },
+    {
+      "action": "upload",
+      "section": "media",
+      "timestamp": "2026-04-04T08:08:39.711Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T08:10:12.206Z"
+    },
+    {
+      "action": "upload",
+      "section": "media",
+      "timestamp": "2026-04-04T08:10:13.873Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T08:12:26.936Z"
+    },
+    {
+      "action": "create",
+      "section": "events",
+      "timestamp": "2026-04-04T08:12:32.820Z"
+    },
+    {
+      "action": "update",
+      "section": "events",
+      "timestamp": "2026-04-04T08:12:33.930Z"
+    },
+    {
+      "action": "delete",
+      "section": "events",
+      "timestamp": "2026-04-04T08:12:35.082Z"
+    },
+    {
+      "action": "upload",
+      "section": "media",
+      "timestamp": "2026-04-04T08:12:36.292Z"
+    },
+    {
+      "action": "create",
+      "section": "sponsors",
+      "timestamp": "2026-04-04T08:12:38.741Z"
+    },
+    {
+      "action": "delete",
+      "section": "sponsors",
+      "timestamp": "2026-04-04T08:12:39.919Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T08:22:04.115Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T08:23:04.175Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T08:24:33.753Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T08:26:25.162Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T08:43:14.560Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T08:45:46.289Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T08:58:47.826Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T09:01:57.930Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T10:44:18.333Z"
+    },
+    {
+      "action": "login",
+      "section": "auth",
+      "timestamp": "2026-04-04T10:51:11.969Z"
+    },
+    {
+      "action": "create",
+      "section": "agents",
+      "timestamp": "2026-04-04T10:55:30.019Z"
+    }
+  ],
+  "totals": {
+    "auth": 20,
+    "events": 9,
+    "sponsors": 4,
+    "media": 5,
+    "agents": 1
+  },
+  "lastLogin": null
+}

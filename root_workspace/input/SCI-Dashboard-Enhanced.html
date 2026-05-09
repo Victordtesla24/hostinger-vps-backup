@@ -1,0 +1,2311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="application-name" content="SCI Dashboard">
+<meta name="msapplication-tooltip" content="Sprint Completion Index Dashboard — Enhanced">
+<meta name="color-scheme" content="dark">
+<title>Sprint Completion Index — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+/* === ROOT VARIABLES === */
+:root {
+  --bg:#0f172a;--surface:#1e293b;--surface2:#283548;--border:#334155;
+  --text:#f1f5f9;--muted:#94a3b8;--dim:#64748b;
+  --accent:#3b82f6;--accent-light:#60a5fa;
+  --green:#22c55e;--green-dim:rgba(34,197,94,0.15);
+  --yellow:#eab308;--yellow-dim:rgba(234,179,8,0.15);
+  --red:#ef4444;--red-dim:rgba(239,68,68,0.15);
+  --orange:#f97316;--purple:#a855f7;
+  --radius:12px;--radius-sm:8px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+.app{max-width:1400px;margin:0 auto;padding:20px 24px 40px}
+
+/* === HEADER === */
+header{display:flex;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+header>*{margin-right:20px;margin-bottom:8px}header>*:last-child{margin-right:0}
+header .team-photo{width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);cursor:pointer;background:var(--surface);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
+header .team-photo img{width:100%;height:100%;object-fit:cover}
+header .team-photo .placeholder{font-size:1.6rem;color:var(--dim)}
+header .titles{flex:1;min-width:200px}
+header .titles h1{font-size:1.5rem;font-weight:700;line-height:1.2}
+header .titles .subtitle{color:var(--muted);font-size:0.85rem;margin-top:2px}
+header .actions{display:flex;flex-wrap:wrap;align-items:center}
+header .actions>*{margin-right:10px;margin-bottom:4px}header .actions>*:last-child{margin-right:0}
+
+/* === BUTTONS === */
+.btn{padding:8px 16px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.8rem;font-weight:600;cursor:pointer;transition:all 0.15s;display:inline-flex;align-items:center}
+.btn .icon{font-size:1rem;margin-right:6px}
+.btn:hover{background:var(--surface2);border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:#2563eb}
+
+/* === TOOLBAR === */
+.toolbar{display:flex;align-items:center;flex-wrap:wrap;margin-bottom:8px;padding:10px 0;border-bottom:1px solid var(--border)}
+.toolbar>*{margin-right:12px;margin-bottom:4px}.toolbar>*:last-child{margin-right:0}
+.toolbar label{font-size:0.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;font-weight:600}
+.toolbar select{padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.82rem;appearance:auto}
+.toolbar .status{margin-left:auto;font-size:0.75rem;color:var(--dim);display:flex;align-items:center}
+.toolbar .status .dot{width:8px;height:8px;border-radius:50%;margin-right:6px}
+.toolbar .status .dot.live{background:var(--green);animation:pulse 2s infinite}
+.toolbar .status .dot.idle{background:var(--dim)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* === TAB NAVIGATION === */
+.tab-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;padding:4px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border)}
+.tab-btn{padding:9px 20px;border-radius:var(--radius-sm);border:none;background:transparent;color:var(--muted);font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.tab-btn:hover{background:var(--surface2);color:var(--text)}
+.tab-btn.active{background:var(--accent);color:#fff}
+
+/* === ONBOARDING === */
+.onboard{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center}
+.onboard>*{margin-bottom:20px}.onboard .logo{font-size:3.5rem;opacity:0.3}
+.onboard h2{font-size:1.4rem;font-weight:600}
+.onboard p{color:var(--muted);font-size:0.9rem;max-width:540px;line-height:1.6}
+.onboard .path-hint{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 16px;font-family:'Consolas','Courier New',monospace;font-size:0.8rem;color:var(--accent-light);word-break:break-all}
+
+/* === KPI ROW === */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;transition:transform 0.15s,border-color 0.15s}
+.kpi:hover{transform:translateY(-2px);border-color:var(--accent)}
+.kpi .value{font-size:1.8rem;font-weight:800;line-height:1.1}
+.kpi .label{font-size:0.7rem;color:var(--muted);margin-top:5px;text-transform:uppercase;letter-spacing:0.4px}
+.kpi.green .value{color:var(--green)}.kpi.yellow .value{color:var(--yellow)}.kpi.red .value{color:var(--red)}.kpi.blue .value{color:var(--accent)}.kpi.orange .value{color:var(--orange)}.kpi.purple .value{color:var(--purple)}
+
+/* === GRID & CARDS === */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px}
+@media(max-width:960px){.grid{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;transition:border-color 0.15s}
+.card:hover{border-color:var(--surface2)}
+.card h2{font-size:0.92rem;font-weight:600;margin-bottom:12px}
+.card.full{grid-column:1/-1}
+.chart-container{position:relative;height:270px}
+.chart-container.gauge{height:200px}
+.section-gap{margin-bottom:24px}
+
+/* === 3-COLUMN GRID === */
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:24px}
+@media(max-width:960px){.grid-3{grid-template-columns:1fr}}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+@media(max-width:960px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+
+/* === TABLES === */
+table{width:100%;border-collapse:collapse;font-size:0.78rem}
+th{text-align:left;color:var(--muted);font-weight:600;padding:8px;border-bottom:1px solid var(--border);text-transform:uppercase;font-size:0.68rem;letter-spacing:0.4px}
+td{padding:8px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+
+/* === PROGRESS BARS === */
+.bar-bg{background:#334155;border-radius:6px;height:20px;width:100%;position:relative;overflow:hidden;min-width:65px}
+.bar-fill{height:100%;border-radius:6px;display:flex;align-items:center;justify-content:flex-end;padding-right:5px;font-size:0.68rem;font-weight:700;color:#fff;transition:width 0.5s}
+.bar-fill.high{background:linear-gradient(90deg,#16a34a,#22c55e)}
+.bar-fill.mid{background:linear-gradient(90deg,#ca8a04,#eab308)}
+.bar-fill.low{background:linear-gradient(90deg,#dc2626,#ef4444)}
+.bar-fill.zero{background:transparent}
+.bar-label-zero{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:0.68rem;color:var(--muted);font-weight:600}
+
+/* === BADGES === */
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:0.68rem;font-weight:700;white-space:nowrap}
+.badge.on-track{background:var(--green-dim);color:var(--green)}
+.badge.at-risk{background:var(--yellow-dim);color:var(--yellow)}
+.badge.behind{background:var(--red-dim);color:var(--red)}
+.badge.no-data{background:rgba(148,163,184,0.15);color:var(--muted)}
+.badge.severity-high{background:var(--red-dim);color:var(--red)}
+.badge.severity-medium{background:var(--yellow-dim);color:var(--yellow)}
+.badge.severity-low{background:rgba(249,115,22,0.15);color:var(--orange)}
+.na{color:var(--dim);font-style:italic}
+
+/* === METRIC BOX === */
+.metric-box{background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:14px 18px;margin-bottom:22px}
+.metric-box h3{font-size:0.85rem;color:var(--accent);margin-bottom:4px}
+.metric-box p{font-size:0.78rem;color:var(--muted);line-height:1.5}
+.metric-box code{background:rgba(59,130,246,0.12);padding:2px 5px;border-radius:4px;font-size:0.76rem;color:var(--text)}
+
+/* === PHASE TAGS === */
+.phase-tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:0.62rem;font-weight:600;margin-right:3px;margin-bottom:2px}
+.phase-tag.design{background:rgba(59,130,246,0.15);color:#60a5fa}
+.phase-tag.dev{background:rgba(139,92,246,0.15);color:#a78bfa}
+.phase-tag.testp{background:rgba(34,197,94,0.15);color:#4ade80}
+.phase-tag.testn{background:rgba(239,68,68,0.15);color:#f87171}
+.phase-tag.other{background:rgba(148,163,184,0.1);color:#94a3b8}
+.phase-tag.present{background:rgba(34,197,94,0.15);color:#4ade80}
+.phase-tag.missing{background:rgba(239,68,68,0.15);color:#f87171}
+
+/* === RISK TABLE === */
+.risk-row{border-left:4px solid transparent}
+.risk-row.high{border-left-color:var(--red)}
+.risk-row.medium{border-left-color:var(--yellow)}
+.risk-row.low{border-left-color:var(--orange)}
+
+/* === HEATMAP === */
+.heatmap-cell{padding:6px 10px;text-align:center;font-weight:600;font-size:0.75rem;border-radius:4px}
+
+/* === MODAL === */
+.modal-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;width:90%;max-width:520px;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:1.1rem;margin-bottom:18px}
+.modal .field{margin-bottom:14px}
+.modal .field label{display:block;font-size:0.78rem;color:var(--muted);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px}
+.modal .field input,.modal .field textarea,.modal .field select{width:100%;padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:0.85rem;font-family:inherit}
+.modal .field textarea{resize:vertical;min-height:80px}
+.modal .field input[type=file]{padding:6px}
+.modal .btn-row{display:flex;justify-content:flex-end;margin-top:20px}
+.modal .btn-row>*{margin-left:10px}.modal .btn-row>*:first-child{margin-left:0}
+.modal .hint{font-size:0.72rem;color:var(--dim);margin-top:4px;line-height:1.4}
+
+/* === LEGEND === */
+.legend{display:flex;flex-wrap:wrap;margin-top:12px}
+.legend-item{display:flex;align-items:center;margin-right:18px;margin-bottom:6px;font-size:0.75rem;color:var(--muted)}
+.legend-dot{width:9px;height:9px;border-radius:50%;margin-right:5px}
+
+/* === KPI TOOLTIP HOVER === */
+.kpi{position:relative}
+.kpi .tooltip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#0f172a;border:1px solid var(--accent);border-radius:8px;padding:10px 14px;font-size:0.72rem;color:var(--muted);line-height:1.5;white-space:normal;width:240px;text-align:left;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);pointer-events:none}
+.kpi .tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--accent)}
+.kpi .tooltip strong{color:var(--text);font-weight:700}
+.kpi .tooltip code{background:rgba(59,130,246,0.15);padding:1px 4px;border-radius:3px;font-size:0.68rem;color:var(--accent-light)}
+.kpi:hover .tooltip{display:block}
+
+/* === EXPANDABLE PBI ROWS === */
+.pbi-row{cursor:pointer;transition:background 0.15s}
+.pbi-row:hover{background:var(--surface2)}
+.pbi-row td:first-child::before{content:'\25B6';display:inline-block;margin-right:6px;font-size:0.6rem;transition:transform 0.2s;color:var(--dim)}
+.pbi-row.expanded td:first-child::before{transform:rotate(90deg);color:var(--accent)}
+.pbi-row.expanded{background:var(--surface2);border-bottom:none}
+.task-detail-row{display:none}
+.task-detail-row.visible{display:table-row}
+.task-detail-row td{padding-left:24px!important;font-size:0.72rem;color:var(--muted);background:rgba(59,130,246,0.03);border-bottom:1px solid rgba(51,65,85,0.5)}
+.task-detail-row:last-of-type td{border-bottom:2px solid var(--border)}
+.expand-all-btn{padding:4px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:0.72rem;cursor:pointer;transition:all 0.15s;margin-left:auto}
+.expand-all-btn:hover{border-color:var(--accent);color:var(--text)}
+
+/* === FOOTER === */
+footer{text-align:center;padding:20px 0 10px;color:var(--dim);font-size:0.72rem;border-top:1px solid var(--border);margin-top:20px}
+.hidden{display:none !important}
+#fileInput{display:none}#photoInput{display:none}
+
+/* === BEGIN SCI-RISK-ENHANCEMENT === */
+/* Sprint 47.5 Risk/Dependency Analysis Styles */
+.sci-risk-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.sci-risk-header h2{font-size:1.15rem;color:var(--accent-light);margin:0}
+.sci-risk-header .sci-risk-badge{font-size:0.65rem;padding:3px 10px;border-radius:12px;font-weight:700;letter-spacing:0.5px}
+.sci-risk-header .sci-risk-badge.critical{background:var(--red-dim);color:var(--red)}
+.sci-risk-header .sci-risk-badge.warning{background:var(--yellow-dim);color:var(--yellow)}
+.sci-risk-header .sci-risk-badge.ok{background:var(--green-dim);color:var(--green)}
+.sci-risk-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+.sci-risk-strip .strip-item{text-align:center}
+.sci-risk-strip .strip-value{font-size:1.5rem;font-weight:800;line-height:1.1}
+.sci-risk-strip .strip-label{font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.3px;margin-top:3px}
+.sci-risk-strip .strip-value.red{color:var(--red)}
+.sci-risk-strip .strip-value.yellow{color:var(--yellow)}
+.sci-risk-strip .strip-value.green{color:var(--green)}
+.sci-risk-strip .strip-value.blue{color:var(--accent)}
+.sci-risk-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+.sci-risk-card h3{font-size:0.88rem;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.sci-risk-card h3 .card-icon{font-size:1rem}
+.sci-risk-table{width:100%;border-collapse:collapse;font-size:0.75rem}
+.sci-risk-table th{text-align:left;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.3px}
+.sci-risk-table td{padding:6px 8px;border-bottom:1px solid rgba(51,65,85,0.5);vertical-align:middle}
+.sci-risk-table tr:last-child td{border-bottom:none}
+.sci-risk-table .risk-high{border-left:3px solid var(--red)}
+.sci-risk-table .risk-medium{border-left:3px solid var(--yellow)}
+.sci-risk-table .risk-low{border-left:3px solid var(--orange)}
+.sci-risk-progress{height:6px;background:#334155;border-radius:3px;overflow:hidden;min-width:60px}
+.sci-risk-progress .fill{height:100%;border-radius:3px}
+.sci-risk-progress .fill.red{background:var(--red)}
+.sci-risk-progress .fill.yellow{background:var(--yellow)}
+.sci-risk-progress .fill.green{background:var(--green)}
+.sci-risk-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:960px){.sci-risk-grid{grid-template-columns:1fr}}
+.sci-risk-list{list-style:none;padding:0;margin:0}
+.sci-risk-list li{padding:6px 0;border-bottom:1px solid rgba(51,65,85,0.4);font-size:0.78rem;color:var(--muted);display:flex;align-items:flex-start;gap:8px}
+.sci-risk-list li:last-child{border-bottom:none}
+.sci-risk-list .icon{flex-shrink:0;font-size:0.9rem}
+.sci-risk-list .icon.check{color:var(--green)}
+.sci-risk-list .icon.warn{color:var(--red)}
+.sci-risk-action{display:flex;align-items:center;gap:6px;font-size:0.72rem;padding:4px 0}
+.sci-risk-action .priority{font-size:0.6rem;padding:2px 6px;border-radius:8px;font-weight:700}
+.sci-risk-action .priority.p1{background:var(--red-dim);color:var(--red)}
+.sci-risk-action .priority.p2{background:var(--yellow-dim);color:var(--yellow)}
+.sci-risk-capacity-box{background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:14px;margin-bottom:14px}
+.sci-risk-capacity-box h4{font-size:0.82rem;color:var(--accent);margin-bottom:8px}
+.sci-risk-capacity-box .calc{font-family:'Consolas',monospace;font-size:0.72rem;color:var(--muted);line-height:1.6}
+.sci-risk-capacity-box .result{font-size:0.85rem;color:var(--text);font-weight:600;margin-top:8px}
+.sci-risk-footer{font-size:0.68rem;color:var(--dim);margin-top:16px;padding-top:12px;border-top:1px solid var(--border);text-align:center}
+/* === END SCI-RISK-ENHANCEMENT === */
+
+/* === TAB PANELS === */
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* === PRINT STYLES — C-SUITE EXECUTIVE QUALITY === */
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+  @page{size:A4 landscape;margin:12mm 14mm}
+  body{background:#fff!important;color:#1e293b!important;font-size:8pt!important;font-family:'Segoe UI',system-ui,-apple-system,sans-serif!important}
+  .app{max-width:100%!important;padding:0!important}
+  header .actions,.toolbar,.onboard,.modal-overlay,#refreshBtn,#exportBtn,#pdfExportBtn,.btn,
+  #fileInput,#photoInput,#taskBreakdownCard,.tab-nav{display:none!important}
+
+  /* Show all tabs sequentially with section dividers */
+  .tab-panel{display:block!important;padding-top:16px!important;margin-top:8px!important;border-top:3px solid #3b82f6!important}
+  .tab-panel:first-of-type{border-top:none!important;padding-top:0!important;margin-top:0!important}
+  .tab-panel h2[style*="color"]{font-size:13pt!important;color:#1e40af!important;font-weight:700!important;padding-bottom:6px!important;border-bottom:1.5px solid #bfdbfe!important;margin-bottom:14px!important}
+
+  /* Header — executive styling */
+  header{margin-bottom:10px!important;padding-bottom:10px!important;border-bottom:2px solid #0f172a!important}
+  header .titles h1{font-size:16pt!important;color:#0f172a!important;font-weight:800!important;letter-spacing:-0.3px!important}
+  header .titles .subtitle{font-size:8pt!important;color:#475569!important;margin-top:3px!important}
+  header .team-photo{width:48px!important;height:48px!important;border:2px solid #3b82f6!important}
+
+  /* SCI formula box — compact */
+  .metric-box{background:#f0f4ff!important;border:1px solid #bfdbfe!important;padding:8px 12px!important;margin-bottom:10px!important;border-radius:6px!important}
+  .metric-box h3{font-size:8pt!important;color:#1d4ed8!important;margin-bottom:3px!important}
+  .metric-box p{font-size:6.5pt!important;color:#475569!important;line-height:1.4!important}
+  .metric-box code{background:#dbeafe!important;color:#1e40af!important;font-size:6pt!important;padding:1px 4px!important;border-radius:3px!important}
+
+  /* KPI cards — generous spacing, professional */
+  .kpi-row{display:flex!important;flex-wrap:wrap!important;gap:6px!important;margin-bottom:12px!important}
+  .kpi{flex:1 1 auto!important;min-width:80px!important;background:#f8fafc!important;border:1.5px solid #e2e8f0!important;border-radius:6px!important;padding:8px 6px!important;text-align:center!important}
+  .kpi .value{font-size:14pt!important;font-weight:800!important;line-height:1.2!important}
+  .kpi .label{font-size:5pt!important;color:#64748b!important;text-transform:uppercase!important;letter-spacing:0.3px!important;margin-top:2px!important}
+  .kpi.green .value{color:#16a34a!important}.kpi.yellow .value{color:#a16207!important}.kpi.red .value{color:#dc2626!important}
+  .kpi.blue .value{color:#2563eb!important}.kpi.orange .value{color:#c2410c!important}.kpi.purple .value{color:#7c3aed!important}
+
+  /* Cards — clean borders, breathing room */
+  .card{background:#fff!important;border:1px solid #e2e8f0!important;border-radius:6px!important;padding:12px 14px!important;break-inside:avoid;page-break-inside:avoid;margin-bottom:0!important;box-shadow:0 1px 2px rgba(0,0,0,0.04)!important}
+  .card h2{font-size:8.5pt!important;font-weight:700!important;color:#0f172a!important;margin-bottom:8px!important;padding-bottom:4px!important;border-bottom:1px solid #f1f5f9!important}
+  .card.full{grid-column:1/-1!important}
+
+  /* Grids — proper spacing */
+  .grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;margin-bottom:12px!important}
+  .grid-3{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:10px!important;margin-bottom:12px!important}
+  .grid-4{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important;margin-bottom:12px!important}
+  .section-gap{margin-bottom:12px!important}
+
+  /* Charts — proper sizing to prevent overlap */
+  .chart-container{height:180px!important;overflow:hidden!important}
+  .chart-container.gauge{height:140px!important}
+
+  /* Tables — executive report styling */
+  table{font-size:7pt!important;border-collapse:collapse!important;width:100%!important}
+  th{color:#475569!important;font-size:6pt!important;font-weight:700!important;padding:5px 6px!important;border-bottom:2px solid #cbd5e1!important;background:#f8fafc!important;text-transform:uppercase!important;letter-spacing:0.4px!important}
+  td{padding:4px 6px!important;border-bottom:1px solid #e2e8f0!important;color:#1e293b!important;line-height:1.3!important}
+  tr:nth-child(even) td{background:#f8fafc!important}
+
+  /* Progress bars */
+  .bar-bg{background:#e2e8f0!important;height:14px!important;border-radius:3px!important}
+  .bar-fill{border-radius:3px!important;font-size:5.5pt!important}
+  .bar-fill.high{background:#16a34a!important}.bar-fill.mid{background:#a16207!important}.bar-fill.low{background:#dc2626!important}
+  .bar-label-zero{color:#94a3b8!important;font-size:5.5pt!important}
+
+  /* Badges */
+  .badge{border:none!important;font-size:5.5pt!important;padding:2px 6px!important;border-radius:10px!important}
+  .badge.on-track{background:#dcfce7!important;color:#166534!important}
+  .badge.at-risk{background:#fef9c3!important;color:#854d0e!important}
+  .badge.behind{background:#fee2e2!important;color:#991b1b!important}
+  .badge.no-data{background:#f1f5f9!important;color:#64748b!important}
+  .badge.severity-high{background:#fee2e2!important;color:#991b1b!important}
+  .badge.severity-medium{background:#fef9c3!important;color:#854d0e!important}
+  .badge.severity-low{background:#fff7ed!important;color:#9a3412!important}
+
+  /* Risk table */
+  .risk-row{border-left:3px solid transparent!important}
+  .risk-row.high{border-left-color:#dc2626!important}.risk-row.medium{border-left-color:#ca8a04!important}.risk-row.low{border-left-color:#ea580c!important}
+
+  /* Phase tags */
+  .phase-tag{font-size:5pt!important;padding:1px 4px!important}
+  .heatmap-cell{font-size:6pt!important;padding:3px 5px!important}
+
+  .na{color:#94a3b8!important}
+  .legend{margin-top:6px!important}.legend-item{font-size:6pt!important;color:#64748b!important}
+
+  /* Footer — clean */
+  footer{border-top:2px solid #0f172a!important;padding:8px 0 2px!important;font-size:6pt!important;color:#64748b!important;margin-top:16px!important}
+
+  /* Page breaks */
+  #tab-sm{page-break-before:always!important}
+  #tab-po{page-break-before:always!important}
+  #tab-rte{page-break-before:always!important}
+}
+
+/* === PDF EXPORT MODE — C-SUITE EXECUTIVE QUALITY === */
+body.pdf-export-mode{background:#fff!important;color:#1e293b!important;font-size:9pt!important;font-family:'Segoe UI',system-ui,-apple-system,sans-serif!important}
+body.pdf-export-mode .app{max-width:1100px!important;margin:0 auto!important;padding:0 24px!important}
+
+/* Hide UI chrome */
+body.pdf-export-mode header .actions,body.pdf-export-mode .toolbar,body.pdf-export-mode .onboard,body.pdf-export-mode .modal-overlay,body.pdf-export-mode #refreshBtn,body.pdf-export-mode #exportBtn,body.pdf-export-mode #pdfExportBtn,body.pdf-export-mode .btn,body.pdf-export-mode #fileInput,body.pdf-export-mode #photoInput,body.pdf-export-mode #taskBreakdownCard,body.pdf-export-mode .tab-nav{display:none!important}
+
+/* Show all tabs */
+body.pdf-export-mode .tab-panel{display:none;padding-top:20px;margin-top:12px;border-top:3px solid #3b82f6}
+body.pdf-export-mode .tab-panel.active{display:block!important}
+body.pdf-export-mode .tab-panel:first-of-type{border-top:none;padding-top:0;margin-top:0}
+body.pdf-export-mode .tab-panel h2[style*="color"]{font-size:14pt!important;color:#1e40af!important;font-weight:700!important;padding-bottom:8px!important;border-bottom:2px solid #bfdbfe!important;margin-bottom:18px!important}
+
+/* Header — executive */
+body.pdf-export-mode header{margin-bottom:16px!important;padding-bottom:12px!important;border-bottom:3px solid #0f172a!important}
+body.pdf-export-mode header .titles h1{font-size:22pt!important;color:#0f172a!important;font-weight:800!important;letter-spacing:-0.5px!important}
+body.pdf-export-mode header .titles .subtitle{font-size:10pt!important;color:#475569!important;margin-top:4px!important}
+body.pdf-export-mode header .team-photo{width:56px!important;height:56px!important;border:2px solid #3b82f6!important}
+
+/* SCI formula box */
+body.pdf-export-mode .metric-box{background:#f0f4ff!important;border:1px solid #bfdbfe!important;padding:12px 16px!important;margin-bottom:16px!important;border-radius:8px!important}
+body.pdf-export-mode .metric-box h3{font-size:10pt!important;color:#1d4ed8!important;margin-bottom:4px!important}
+body.pdf-export-mode .metric-box p{font-size:8pt!important;color:#475569!important;line-height:1.5!important}
+body.pdf-export-mode .metric-box code{background:#dbeafe!important;color:#1e40af!important;font-size:7.5pt!important}
+
+/* KPI cards */
+body.pdf-export-mode .kpi-row{display:flex!important;flex-wrap:wrap!important;gap:10px!important;margin-bottom:18px!important}
+body.pdf-export-mode .kpi{flex:1 1 auto!important;min-width:100px!important;background:#f8fafc!important;border:1.5px solid #e2e8f0!important;border-radius:8px!important;padding:14px 10px!important}
+body.pdf-export-mode .kpi .value{font-size:20pt!important;font-weight:800!important}
+body.pdf-export-mode .kpi .label{font-size:7pt!important;color:#64748b!important}
+body.pdf-export-mode .kpi.green .value{color:#16a34a!important}
+body.pdf-export-mode .kpi.yellow .value{color:#a16207!important}
+body.pdf-export-mode .kpi.red .value{color:#dc2626!important}
+body.pdf-export-mode .kpi.blue .value{color:#2563eb!important}
+body.pdf-export-mode .kpi.orange .value{color:#c2410c!important}
+body.pdf-export-mode .kpi.purple .value{color:#7c3aed!important}
+
+/* Cards */
+body.pdf-export-mode .card{background:#fff!important;border:1px solid #e2e8f0!important;border-radius:8px!important;padding:16px 18px!important;box-shadow:0 1px 3px rgba(0,0,0,0.06)!important}
+body.pdf-export-mode .card h2{font-size:11pt!important;font-weight:700!important;color:#0f172a!important;margin-bottom:12px!important;padding-bottom:6px!important;border-bottom:1px solid #f1f5f9!important}
+body.pdf-export-mode .card.full{grid-column:1/-1!important}
+
+/* Grids */
+body.pdf-export-mode .grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:14px!important;margin-bottom:16px!important}
+body.pdf-export-mode .grid-3{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:14px!important;margin-bottom:16px!important}
+body.pdf-export-mode .section-gap{margin-bottom:16px!important}
+
+/* Charts — generous height, no overlap */
+body.pdf-export-mode .chart-container{height:240px!important;overflow:hidden!important}
+body.pdf-export-mode .chart-container.gauge{height:180px!important}
+
+/* Tables — executive report */
+body.pdf-export-mode table{font-size:8pt!important;border-collapse:collapse!important}
+body.pdf-export-mode th{color:#475569!important;font-size:7pt!important;font-weight:700!important;padding:6px 8px!important;border-bottom:2px solid #cbd5e1!important;background:#f8fafc!important;text-transform:uppercase!important;letter-spacing:0.4px!important}
+body.pdf-export-mode td{padding:5px 8px!important;border-bottom:1px solid #e2e8f0!important;color:#1e293b!important}
+body.pdf-export-mode tr:nth-child(even) td{background:#f8fafc!important}
+
+/* Progress bars */
+body.pdf-export-mode .bar-bg{background:#e2e8f0!important;height:18px!important;border-radius:4px!important}
+body.pdf-export-mode .bar-fill{border-radius:4px!important}
+body.pdf-export-mode .bar-fill.high{background:#16a34a!important}
+body.pdf-export-mode .bar-fill.mid{background:#a16207!important}
+body.pdf-export-mode .bar-fill.low{background:#dc2626!important}
+body.pdf-export-mode .bar-label-zero{color:#94a3b8!important}
+
+/* Badges */
+body.pdf-export-mode .badge{border:none!important;font-size:7pt!important;padding:3px 8px!important}
+body.pdf-export-mode .badge.on-track{background:#dcfce7!important;color:#166534!important}
+body.pdf-export-mode .badge.at-risk{background:#fef9c3!important;color:#854d0e!important}
+body.pdf-export-mode .badge.behind{background:#fee2e2!important;color:#991b1b!important}
+body.pdf-export-mode .badge.no-data{background:#f1f5f9!important;color:#64748b!important}
+
+/* Phase tags */
+body.pdf-export-mode .phase-tag{font-size:6.5pt!important}
+body.pdf-export-mode .phase-tag.design{background:#dbeafe!important;color:#1d4ed8!important}
+body.pdf-export-mode .phase-tag.dev{background:#ede9fe!important;color:#6d28d9!important}
+body.pdf-export-mode .phase-tag.testp{background:#dcfce7!important;color:#166534!important}
+body.pdf-export-mode .phase-tag.testn{background:#fee2e2!important;color:#991b1b!important}
+body.pdf-export-mode .phase-tag.present{background:#dcfce7!important;color:#166534!important}
+body.pdf-export-mode .phase-tag.missing{background:#fee2e2!important;color:#991b1b!important}
+
+/* Risk table */
+body.pdf-export-mode .risk-row{border-left:4px solid transparent!important}
+body.pdf-export-mode .risk-row.high{border-left-color:#dc2626!important}
+body.pdf-export-mode .risk-row.medium{border-left-color:#ca8a04!important}
+body.pdf-export-mode .risk-row.low{border-left-color:#ea580c!important}
+
+body.pdf-export-mode .heatmap-cell{font-size:7pt!important;padding:4px 6px!important}
+body.pdf-export-mode .na{color:#94a3b8!important}
+body.pdf-export-mode .legend{margin-top:10px!important}
+body.pdf-export-mode .legend-item{font-size:7.5pt!important;color:#64748b!important}
+
+/* Footer */
+body.pdf-export-mode footer{border-top:2px solid #0f172a!important;padding:12px 0 4px!important;font-size:7.5pt!important;color:#64748b!important;margin-top:20px!important}
+</style>
+</head>
+<body>
+<div class="app">
+  <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+  <input type="file" id="photoInput" accept="image/*">
+
+  <!-- === HEADER === -->
+  <header>
+    <div class="team-photo" id="teamPhotoBtn" title="Click to upload team photo">
+      <div class="placeholder" id="photoPlaceholder">&#128101;</div>
+      <img id="teamPhotoImg" class="hidden" alt="Team Photo">
+    </div>
+    <div class="titles">
+      <h1 id="headerTitle">Sprint Completion Index Dashboard</h1>
+      <div class="subtitle" id="headerSubtitle">Connect an Azure DevOps backlog export to begin</div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="connectBtn"><span class="icon">&#128196;</span> Connect Excel File</button>
+      <button class="btn" id="settingsBtn"><span class="icon">&#9881;</span> Team Settings</button>
+      <button class="btn hidden" id="refreshBtn"><span class="icon">&#8635;</span> Refresh Now</button>
+      <button class="btn hidden" id="exportBtn"><span class="icon">&#128424;</span> Print / Export</button>
+      <button class="btn hidden" id="pdfExportBtn" style="background:#dc2626;border-color:#dc2626;color:#fff"><span class="icon">&#128196;</span> Export PDF (HD)</button>
+    </div>
+  </header>
+
+  <!-- === TOOLBAR === -->
+  <div class="toolbar hidden" id="toolbar">
+    <label for="sprintFilter">Sprint:</label>
+    <select id="sprintFilter"></select>
+    <label>Auto-Refresh:</label>
+    <select id="refreshInterval">
+      <option value="0">Off</option>
+      <option value="15">15s</option>
+      <option value="30" selected>30s</option>
+      <option value="60">60s</option>
+      <option value="120">2 min</option>
+    </select>
+    <div class="status" id="statusIndicator">
+      <div class="dot idle" id="statusDot"></div>
+      <span id="statusText">Idle</span>
+    </div>
+  </div>
+
+  <!-- === ONBOARDING PANEL === -->
+  <div id="onboardPanel" class="onboard">
+    <div class="logo">&#128202;</div>
+    <h2>Sprint Completion Index (SCI) Dashboard</h2>
+    <p>Export your sprint backlog from Azure DevOps (Boards &rarr; Backlogs &rarr; Export to Excel) and connect it here. The dashboard automatically classifies tasks into SCI phases, calculates completion, and generates real-time metrics.</p>
+    <p style="font-size:0.82rem;color:var(--dim)">Expected columns in export:</p>
+    <div class="path-hint">ID &middot; Title &middot; Work Item Type &middot; State &middot; Tags &middot; Assigned To &middot; Remaining Work &middot; Effort &middot; Value Area &middot; Iteration Path</div>
+    <button class="btn primary" onclick="document.getElementById('connectBtn').click()" style="margin-top:8px"><span class="icon">&#128196;</span> Connect Excel File</button>
+    <p style="font-size:0.75rem;color:var(--dim);margin-top:12px">Supports ADO backlog export (.xlsx) &middot; Auto-classifies tasks into Design / Dev/UT / Test+ / Test&minus; &middot; Data stays local</p>
+  </div>
+
+  <!-- === DASHBOARD PANEL === -->
+  <div id="dashboardPanel" class="hidden">
+
+    <!-- PARENT COLUMN WARNING -->
+    <div id="parentWarning" class="hidden" style="background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.3);border-radius:10px;padding:12px 18px;margin-bottom:12px">
+      <strong style="color:#eab308">&#9888; Parent Column Missing</strong>
+      <p style="font-size:0.78rem;color:var(--muted);margin-top:4px;line-height:1.5">Your export does not include a <strong style="color:var(--text)">Parent</strong> column. Tasks are being assigned to PBIs by sprint matching (approximate). For accurate SCI scores, add the <strong style="color:var(--text)">Parent</strong> column to your Azure DevOps query: <em>Column Options &rarr; search &ldquo;Parent&rdquo; &rarr; Add &rarr; Re-export</em></p>
+    </div>
+
+    <!-- TAB NAVIGATION -->
+    <nav class="tab-nav" id="tabNav">
+      <button class="tab-btn active" data-tab="tab-overview">Sprint Overview</button>
+      <button class="tab-btn" data-tab="tab-sm">Scrum Master</button>
+      <button class="tab-btn" data-tab="tab-po">Product Owner</button>
+      <button class="tab-btn" data-tab="tab-rte">RTE</button>
+      <button class="tab-btn" data-tab="tab-risk">⚠️ Risk Analysis</button>
+    </nav>
+
+    <!-- ============================================================
+         TAB 1: SPRINT OVERVIEW
+         ============================================================ -->
+    <div class="tab-panel active" id="tab-overview">
+      <div class="kpi-row" id="kpiRow"></div>
+      <div class="grid">
+        <div class="card"><h2>Sprint SCI &mdash; Overall Progress</h2><div class="chart-container"><canvas id="donutChart"></canvas></div></div>
+        <div class="card"><h2>SCI Score per PBI</h2><div class="chart-container"><canvas id="sciBarChart"></canvas></div></div>
+      </div>
+      <div class="grid">
+        <div class="card"><h2>Phase Completion &mdash; Stacked View</h2><div class="chart-container"><canvas id="stackedBar"></canvas></div></div>
+        <div class="card"><h2>Testing Gap &mdash; Test+ vs Test&minus;</h2><div class="chart-container"><canvas id="testGapChart"></canvas></div></div>
+      </div>
+      <div class="card full" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;margin-bottom:12px">
+          <h2 style="margin-bottom:0">PBI-Level Detail</h2>
+          <button class="expand-all-btn" id="expandAllBtn" onclick="toggleAllPBIs()">Expand All</button>
+        </div>
+        <p style="font-size:0.72rem;color:var(--dim);margin-bottom:12px">Click a PBI row to expand and view its child tasks</p>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th style="width:26%">PBI</th>
+              <th>Design<br><span style="font-weight:400;font-size:0.6rem">(20%)</span></th>
+              <th>Dev/UT<br><span style="font-weight:400;font-size:0.6rem">(50%)</span></th>
+              <th>Test+<br><span style="font-weight:400;font-size:0.6rem">(15%)</span></th>
+              <th>Test&minus;<br><span style="font-weight:400;font-size:0.6rem">(15%)</span></th>
+              <th>Tasks</th>
+              <th style="min-width:100px">SCI</th>
+              <th>Status</th>
+            </tr></thead>
+            <tbody id="pbiTableBody"></tbody>
+            <tfoot id="pbiTableFoot"></tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> On Track (&ge; 60%)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div> At Risk (30&ndash;59%)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Behind (&lt; 30%)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--dim)"></div> No Data</div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         TAB 2: SCRUM MASTER VIEW
+         ============================================================ -->
+    <div class="tab-panel" id="tab-sm">
+      <h2 style="font-size:1.1rem;margin-bottom:18px;color:var(--accent-light)">Scrum Master &mdash; Sprint Execution Health</h2>
+
+      <!-- Section 2A: Sprint Health Gauges -->
+      <div class="grid-3" id="sm-gauges">
+        <div class="card"><h2>Sprint Burndown</h2><div class="chart-container gauge"><canvas id="sm-burndown-gauge"></canvas></div></div>
+        <div class="card"><h2>WIP (Work in Progress)</h2><div class="chart-container gauge"><canvas id="sm-wip-gauge"></canvas></div></div>
+        <div class="card"><h2>Completion Velocity</h2><div class="chart-container gauge"><canvas id="sm-velocity-gauge"></canvas></div></div>
+      </div>
+
+      <!-- Section 2B: Team Workload & Balance -->
+      <div class="grid">
+        <div class="card"><h2>Workload by Team Member</h2><div class="chart-container"><canvas id="sm-workload-chart"></canvas></div></div>
+        <div class="card"><h2>Remaining Hours by Team Member</h2><div class="chart-container"><canvas id="sm-remaining-chart"></canvas></div></div>
+      </div>
+
+      <!-- Section 2C: State Flow by Member -->
+      <div class="card full section-gap">
+        <h2>Done / In Progress / To Do by Member</h2>
+        <div class="chart-container"><canvas id="sm-state-chart"></canvas></div>
+      </div>
+
+      <!-- Section 2D: Blocker & Risk Indicators -->
+      <div class="card full section-gap">
+        <h2>At-Risk Work Items</h2>
+        <p style="font-size:0.75rem;color:var(--muted);margin-bottom:12px">Tasks In Progress with &ge; 6 hours remaining work (high effort still outstanding)</p>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Task Title</th><th>Assigned To</th><th>Remaining Hrs</th><th>Parent PBI</th><th>Phase</th></tr></thead>
+            <tbody id="sm-atrisk-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Section 2E: Phase Distribution -->
+      <div class="grid">
+        <div class="card"><h2>Phase Spread by Member</h2><div class="chart-container"><canvas id="sm-phase-chart"></canvas></div></div>
+        <div class="card"><h2>Task Classification Pie</h2><div class="chart-container"><canvas id="sm-class-pie"></canvas></div></div>
+      </div>
+
+      <!-- Section 2F: Sprint Burndown -->
+      <div class="card full section-gap">
+        <h2>Sprint Burndown &mdash; Tasks Remaining Over Time</h2>
+        <div class="chart-container"><canvas id="sm-burndown-line"></canvas></div>
+      </div>
+
+      <!-- Section 2G: PI Velocity -->
+      <div class="grid">
+        <div class="card"><h2>Velocity &mdash; Tasks Completed per Sprint</h2><div class="chart-container"><canvas id="sm-velocity-bar"></canvas></div></div>
+        <div class="card"><h2>Velocity &mdash; Effort (Days) per Sprint</h2><div class="chart-container"><canvas id="sm-velocity-effort"></canvas></div></div>
+      </div>
+
+      <!-- Section 2H: Task Execution Report -->
+      <div class="card full section-gap">
+        <h2>Task-Level Execution Report</h2>
+        <p style="font-size:0.72rem;color:var(--dim);margin-bottom:8px">Sorted by state priority: In Progress first, then To Do, then Done. Shows Closed Date where available for lead/cycle time analysis.</p>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Task</th><th>Assigned To</th><th>State</th><th>Remaining Hrs</th><th>Phase</th><th>Closed Date</th><th>Lead/Cycle Time</th></tr></thead>
+            <tbody id="sm-task-report-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         TAB 3: PRODUCT OWNER VIEW
+         ============================================================ -->
+    <div class="tab-panel" id="tab-po">
+      <h2 style="font-size:1.1rem;margin-bottom:18px;color:var(--accent-light)">Product Owner &mdash; Value Delivery</h2>
+
+      <!-- Section 3A: Value Delivery KPIs -->
+      <div class="kpi-row" id="po-kpi-row"></div>
+
+      <!-- Section 3B: PBI Progress Tracker -->
+      <div class="card full section-gap">
+        <h2>PBI Completion Waterfall</h2>
+        <div class="chart-container"><canvas id="po-waterfall-chart"></canvas></div>
+      </div>
+
+      <!-- Section 3C: PBI Health Matrix -->
+      <div class="card full section-gap">
+        <h2>PBI Health Matrix</h2>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th style="width:22%">PBI Name</th>
+              <th>Effort (SP)</th>
+              <th>Total Tasks</th>
+              <th>Done</th>
+              <th>In Prog</th>
+              <th>To Do</th>
+              <th>Remaining Hrs</th>
+              <th>Phase Coverage</th>
+              <th style="min-width:90px">SCI</th>
+              <th>Status</th>
+            </tr></thead>
+            <tbody id="po-health-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Section 3D: Tag Distribution Analysis -->
+      <div class="grid">
+        <div class="card"><h2>Tag Frequency</h2><div class="chart-container"><canvas id="po-tag-chart"></canvas></div></div>
+        <div class="card"><h2>Value Area Breakdown</h2><div class="chart-container"><canvas id="po-value-chart"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         TAB 4: RTE VIEW
+         ============================================================ -->
+    <div class="tab-panel" id="tab-rte">
+      <h2 style="font-size:1.1rem;margin-bottom:18px;color:var(--accent-light)">Release Train Engineer &mdash; Program Health</h2>
+
+      <!-- Section 4A: Delivery Confidence -->
+      <div class="grid-3" id="rte-gauges">
+        <div class="card"><h2>Overall Sprint Health</h2><div class="chart-container gauge"><canvas id="rte-health-gauge"></canvas></div></div>
+        <div class="card"><h2>Team Balance Score</h2><div class="chart-container gauge"><canvas id="rte-balance-gauge"></canvas></div></div>
+        <div class="card"><h2>Phase Coverage Score</h2><div class="chart-container gauge"><canvas id="rte-coverage-gauge"></canvas></div></div>
+      </div>
+
+      <!-- Section 4B: Team Heatmap -->
+      <div class="card full section-gap">
+        <h2>Team Performance Heatmap</h2>
+        <div style="overflow-x:auto">
+          <table id="rte-heatmap-table">
+            <thead><tr><th>Team Member</th><th>Total Tasks</th><th>Done %</th><th>Remaining Hrs</th><th>WIP Count</th><th>Phase Diversity</th></tr></thead>
+            <tbody id="rte-heatmap-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Section 4C: Cross-Member Dependency Matrix -->
+      <div class="card full section-gap">
+        <h2>PBI &times; Member Assignment Matrix</h2>
+        <p style="font-size:0.75rem;color:var(--muted);margin-bottom:12px">Cell values show task count per member per PBI. Single-threaded PBIs (one member) are flagged.</p>
+        <div style="overflow-x:auto">
+          <table id="rte-matrix-table">
+            <thead id="rte-matrix-head"></thead>
+            <tbody id="rte-matrix-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Section 4E: PI Aggregated View -->
+      <div style="margin-top:24px;padding-top:20px;border-top:3px solid var(--accent)">
+        <h2 style="font-size:1.1rem;margin-bottom:18px;color:var(--accent-light)">PI47 &mdash; Program Increment Overview (All Sprints)</h2>
+      </div>
+      <div class="kpi-row" id="rte-pi-kpis"></div>
+      <div class="card full section-gap">
+        <h2>Sprint-over-Sprint Progress</h2>
+        <div class="chart-container"><canvas id="rte-pi-sprint-chart"></canvas></div>
+      </div>
+      <div class="grid">
+        <div class="card"><h2>PI Velocity by Sprint</h2><div class="chart-container"><canvas id="rte-pi-velocity-chart"></canvas></div></div>
+        <div class="card"><h2>PI Task State Trend</h2><div class="chart-container"><canvas id="rte-pi-state-chart"></canvas></div></div>
+      </div>
+      <div class="card full section-gap">
+        <h2>PI &mdash; PBI Completion by Sprint</h2>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Sprint</th><th>Dates</th><th>Work Days</th><th>PBIs</th><th>Tasks</th><th>Done</th><th>In Prog</th><th>To Do</th><th>Done %</th><th>Remaining Hrs</th><th>Avg SCI</th></tr></thead>
+            <tbody id="rte-pi-table-body"></tbody>
+            <tfoot id="rte-pi-table-foot"></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         TAB 5: SPRINT 47.5 RISK ANALYSIS
+         BEGIN SCI-RISK-ENHANCEMENT
+         ============================================================ -->
+    <div class="tab-panel" id="tab-risk">
+      <div class="sci-risk-header">
+        <h2>Sprint 47.5 Unseen Dependencies & Delivery Risk Command Centre</h2>
+        <span class="sci-risk-badge critical" id="riskOverallBadge">ELEVATED RISK</span>
+      </div>
+
+      <!-- Executive Risk Strip -->
+      <div class="sci-risk-strip" id="riskStrip">
+        <div class="strip-item"><div class="strip-value red" id="riskHoursRemaining">538h</div><div class="strip-label">PI48 Remaining</div></div>
+        <div class="strip-item"><div class="strip-value yellow" id="riskInProgress">10</div><div class="strip-label">In Progress Blocked</div></div>
+        <div class="strip-item"><div class="strip-value red" id="riskDependencies">8</div><div class="strip-label">Hidden Dependencies</div></div>
+        <div class="strip-item"><div class="strip-value yellow" id="riskDescoped">8</div><div class="strip-label">Descope Pressure</div></div>
+        <div class="strip-item"><div class="strip-value red" id="riskFeasibility">⚠️</div><div class="strip-label">NTP Feasibility</div></div>
+      </div>
+
+      <!-- NTP Capacity Reality Check -->
+      <div class="sci-risk-card">
+        <h3><span class="card-icon">📊</span> NTP Capacity Reality Check</h3>
+        <div class="sci-risk-capacity-box">
+          <h4>Sprint 48.1 Capacity Calculation</h4>
+          <div class="calc">
+            Team: 8 people (4 Testers, 2 Developers, 2 Analysts)<br>
+            Theoretical daily: 8 people × 8h = <strong>64h/day</strong><br>
+            Focus-adjusted (60-75%): <strong>38.4h - 48.0h/day</strong><br>
+            Sprint 48.1 remaining: <strong style="color:var(--red)">210.75h</strong><br>
+            Sprint 48.2 remaining: <strong style="color:var(--red)">327.0h</strong>
+          </div>
+          <div class="result" style="color:var(--red)">
+            ⚠️ Sprint 48.1 needs 4.4-5.5 working days to complete at current capacity.<br>
+            ⚠️ Combined PI48 needs 11.2-14.0 working days — exceeds typical 2-week sprint.
+          </div>
+        </div>
+        <table class="sci-risk-table" style="margin-top:12px">
+          <thead><tr><th>Person</th><th>Remaining Hours</th><th>Load %</th><th>Status</th></tr></thead>
+          <tbody id="riskCapacityTable">
+            <tr class="risk-high"><td>Rinju Cyriac</td><td>218.0h</td><td><div class="sci-risk-progress" style="width:100px"><div class="fill red" style="width:100%"></div></div></td><td><span class="badge behind">OVERLOADED</span></td></tr>
+            <tr class="risk-medium"><td>Oscar Chandra</td><td>127.0h</td><td><div class="sci-risk-progress" style="width:100px"><div class="fill yellow" style="width:58%"></div></div></td><td><span class="badge at-risk">Heavy</span></td></tr>
+            <tr class="risk-medium"><td>Zachary Prichard</td><td>48.75h</td><td><div class="sci-risk-progress" style="width:100px"><div class="fill yellow" style="width:22%"></div></div></td><td><span class="badge at-risk">Moderate</span></td></tr>
+            <tr><td>James Pitor</td><td>40.0h</td><td><div class="sci-risk-progress" style="width:100px"><div class="fill green" style="width:18%"></div></div></td><td><span class="badge on-track">OK</span></td></tr>
+            <tr><td>Leon Smit</td><td>26.0h</td><td><div class="sci-risk-progress" style="width:100px"><div class="fill green" style="width:12%"></div></div></td><td><span class="badge on-track">OK</span></td></tr>
+            <tr><td>Minh Huynh</td><td>46.0h</td><td><div class="sci-risk-progress" style="width:100px"><div class="fill green" style="width:21%"></div></div></td><td><span class="badge on-track">OK</span></td></tr>
+            <tr><td>Jet Hunt</td><td>25.0h</td><td><div class="sci-risk-progress" style="width:100px"><div class="fill green" style="width:11%"></div></div></td><td><span class="badge on-track">OK</span></td></tr>
+            <tr><td>Severiano Iv Cruz</td><td>7.0h</td><td><div class="sci-risk-progress" style="width:100px"><div class="fill green" style="width:3%"></div></div></td><td><span class="badge on-track">OK</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Hidden Dependencies Radar -->
+      <div class="sci-risk-card">
+        <h3><span class="card-icon">🔗</span> Hidden Dependencies Radar</h3>
+        <table class="sci-risk-table">
+          <thead><tr><th>Category</th><th>Items</th><th>Hours</th><th>Risk</th><th>Key Blockers</th></tr></thead>
+          <tbody>
+            <tr class="risk-high"><td>PO Approvals/Endorsements</td><td>57</td><td>145.5h</td><td><span class="badge behind">HIGH</span></td><td>DoD approvals, test sign-off, documentation endorsement</td></tr>
+            <tr class="risk-high"><td>Documentation Backlog</td><td>32</td><td>150.0h</td><td><span class="badge behind">HIGH</span></td><td>AP353, ADO updates, 3DM, PRFF, test reports</td></tr>
+            <tr class="risk-high"><td>Development Dependencies</td><td>12</td><td>63.0h</td><td><span class="badge at-risk">MEDIUM</span></td><td>Bug fixes, peer reviews, code merges</td></tr>
+            <tr class="risk-high"><td>Test Data Preparation</td><td>7</td><td>51.0h</td><td><span class="badge behind">HIGH</span></td><td>Client data, FT data prep, ICP setup</td></tr>
+            <tr class="risk-high"><td>Environment Readiness</td><td>8</td><td>28.0h</td><td><span class="badge behind">HIGH</span></td><td>L1/L2 access, mainframe testing, service deployment</td></tr>
+            <tr class="risk-medium"><td>Batch/COBOL Integration</td><td>6</td><td>24.0h</td><td><span class="badge behind">HIGH</span></td><td>ICSE2D01 changes, MQ, mainframe batch</td></tr>
+            <tr class="risk-medium"><td>External Team (Kingfishers/Crows)</td><td>5</td><td>20.0h</td><td><span class="badge at-risk">MEDIUM</span></td><td>KT sessions, demo support, CRDR discovery</td></tr>
+            <tr><td>Access/Permissions</td><td>1</td><td>4.0h</td><td><span class="badge at-risk">MEDIUM</span></td><td>Ref data access in L2</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Risk Register Top 10 -->
+      <div class="sci-risk-card">
+        <h3><span class="card-icon">⚡</span> Risk Register — Top 10</h3>
+        <table class="sci-risk-table">
+          <thead><tr><th>ID</th><th>Risk</th><th>Severity</th><th>Hours</th><th>Recommended Action</th></tr></thead>
+          <tbody>
+            <tr class="risk-high"><td>R1</td><td>PI48 capacity deficit — 538h remaining vs 11-14 day timeline</td><td><span class="badge behind">HIGH</span></td><td>538h</td><td>Aggressive scope triage required</td></tr>
+            <tr class="risk-high"><td>R2</td><td>PO decision bottleneck — 57 items pending approval</td><td><span class="badge behind">HIGH</span></td><td>145.5h</td><td>Batch PO decisions, daily decision window</td></tr>
+            <tr class="risk-high"><td>R3</td><td>Rinju Cyriac overload — 218h vs team avg 67h</td><td><span class="badge behind">HIGH</span></td><td>218h</td><td>Redistribute testing work immediately</td></tr>
+            <tr class="risk-high"><td>R4</td><td>L1/L2 environment readiness — mainframe testing blocked</td><td><span class="badge behind">HIGH</span></td><td>28h</td><td>Prioritize environment as sprint zero</td></tr>
+            <tr class="risk-high"><td>R5</td><td>Test data preparation — FT execution blocked</td><td><span class="badge behind">HIGH</span></td><td>51h</td><td>Front-load data prep, parallelize with dev</td></tr>
+            <tr class="risk-medium"><td>R6</td><td>6 Committed PBIs have no hour breakdown</td><td><span class="badge at-risk">MEDIUM</span></td><td>—</td><td>Estimate before sprint planning complete</td></tr>
+            <tr class="risk-medium"><td>R7</td><td>WIP overload — Severiano has 5 In Progress items</td><td><span class="badge at-risk">MEDIUM</span></td><td>21h</td><td>Enforce WIP limits, finish before starting</td></tr>
+            <tr class="risk-medium"><td>R8</td><td>COBOL/mainframe dependencies</td><td><span class="badge at-risk">MEDIUM</span></td><td>24h</td><td>Identify senior COBOL expertise</td></tr>
+            <tr class="risk-medium"><td>R9</td><td>Documentation backlog — 32 items remaining</td><td><span class="badge at-risk">MEDIUM</span></td><td>150h</td><td>Batch documentation, template reuse</td></tr>
+            <tr class="risk-low"><td>R10</td><td>Descope pressure — 8 items tagged #tobedescoped (49h)</td><td><span class="badge severity-low">LOW</span></td><td>49h</td><td>Execute descope decision, remove from sprint</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sci-risk-grid">
+        <!-- What's Working -->
+        <div class="sci-risk-card">
+          <h3><span class="card-icon">✅</span> What's Working</h3>
+          <ul class="sci-risk-list">
+            <li><span class="icon check">✓</span> Sprint 47.5 achieved 100% completion (97/97 items)</li>
+            <li><span class="icon check">✓</span> NTP feature 94% complete (49/52 items Done)</li>
+            <li><span class="icon check">✓</span> PI47 sprints 47.2-47.6 all at 100% Done</li>
+            <li><span class="icon check">✓</span> Clear ownership — every task has an assignee</li>
+            <li><span class="icon check">✓</span> Testing discipline maintained (136/199 complete)</li>
+            <li><span class="icon check">✓</span> Documentation progress solid (94/133 done)</li>
+          </ul>
+        </div>
+
+        <!-- What's Not Working -->
+        <div class="sci-risk-card">
+          <h3><span class="card-icon">⚠️</span> What's Not Working</h3>
+          <ul class="sci-risk-list">
+            <li><span class="icon warn">✗</span> PI48 backlog imbalance: 106 To Do vs 26 Done</li>
+            <li><span class="icon warn">✗</span> 6 Committed PBIs without task breakdown</li>
+            <li><span class="icon warn">✗</span> Extreme workload imbalance: max 218h vs avg 67h</li>
+            <li><span class="icon warn">✗</span> WIP violations: 3 people with multiple In Progress</li>
+            <li><span class="icon warn">✗</span> 8 items tagged for descoping (49h at risk)</li>
+            <li><span class="icon warn">✗</span> 7 L1/L2/environment tasks blocking testing</li>
+            <li><span class="icon warn">✗</span> 8 approval/endorsement items creating bottleneck</li>
+            <li><span class="icon warn">✗</span> Sprint 48.1 spillover risk: 211h remaining</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="sci-risk-grid">
+        <!-- SM Actions -->
+        <div class="sci-risk-card">
+          <h3><span class="card-icon">🛠️</span> Scrum Master Intervention Playbook</h3>
+          <div class="sci-risk-action"><span class="priority p1">P1</span> Daily blocker aging board — 10 In Progress items may be blocked</div>
+          <div class="sci-risk-action"><span class="priority p1">P1</span> WIP limit enforcement — Severiano has 5 items In Progress</div>
+          <div class="sci-risk-action"><span class="priority p1">P1</span> Workload rebalancing — Rinju at 218h vs team avg 67h</div>
+          <div class="sci-risk-action"><span class="priority p1">P1</span> Environment/test-data SLA — 8 environment tasks blocking</div>
+          <div class="sci-risk-action"><span class="priority p2">P2</span> Stop-starting-start-finishing — WIP overload across team</div>
+          <div class="sci-risk-action"><span class="priority p2">P2</span> Escalation thresholds — Define 24h/48h/72h paths</div>
+          <div class="sci-risk-action"><span class="priority p2">P2</span> Focus time protection — Reduce context switching</div>
+          <div class="sci-risk-action"><span class="priority p2">P2</span> Dependency owner assignment — External team deps unclear</div>
+        </div>
+
+        <!-- PO Actions -->
+        <div class="sci-risk-card">
+          <h3><span class="card-icon">🎯</span> Product Owner Intervention Playbook</h3>
+          <div class="sci-risk-action"><span class="priority p1">P1</span> Scope triage session — 538h remaining, 11-14 days needed</div>
+          <div class="sci-risk-action"><span class="priority p1">P1</span> Execute descoping decision — 8 items (49h) tagged for removal</div>
+          <div class="sci-risk-action"><span class="priority p1">P1</span> Daily decision window — 57 items pending approval</div>
+          <div class="sci-risk-action"><span class="priority p2">P2</span> Acceptance criteria freeze — Prevent mid-sprint scope changes</div>
+          <div class="sci-risk-action"><span class="priority p2">P2</span> Priority trade-off matrix — Clarify NTP vs other priorities</div>
+          <div class="sci-risk-action"><span class="priority p2">P2</span> MVP vs stretch clarification — Define must-have vs nice-to-have</div>
+        </div>
+      </div>
+
+      <!-- Budget-Constrained Improvements -->
+      <div class="sci-risk-card">
+        <h3><span class="card-icon">💰</span> Budget-Constrained Improvement Roadmap</h3>
+        <table class="sci-risk-table">
+          <thead><tr><th>Improvement</th><th>Cost</th><th>Impact</th><th>Hours Saved</th></tr></thead>
+          <tbody>
+            <tr><td>Freeze scope now — no new requirements this sprint</td><td><span class="badge on-track">Zero</span></td><td><span class="badge behind">HIGH</span></td><td>Prevents scope creep</td></tr>
+            <tr><td>Execute pending descopes — remove 8 tagged items</td><td><span class="badge on-track">Zero</span></td><td><span class="badge behind">HIGH</span></td><td>49h</td></tr>
+            <tr><td>Batch PO decisions to 2x/day windows</td><td><span class="badge on-track">Zero</span></td><td><span class="badge behind">HIGH</span></td><td>Unblocks 57 items</td></tr>
+            <tr><td>WIP limit to 1 per person</td><td><span class="badge on-track">Zero</span></td><td><span class="badge at-risk">MEDIUM</span></td><td>Reduces context switch</td></tr>
+            <tr><td>Workload rebalance from Rinju to others</td><td><span class="badge on-track">Zero</span></td><td><span class="badge behind">HIGH</span></td><td>~80h redistributed</td></tr>
+            <tr><td>Template reuse for documentation</td><td><span class="badge severity-low">Low</span></td><td><span class="badge at-risk">MEDIUM</span></td><td>~30h</td></tr>
+            <tr><td>Front-load environment setup as sprint zero</td><td><span class="badge on-track">Zero</span></td><td><span class="badge behind">HIGH</span></td><td>Unblocks 8 tasks</td></tr>
+            <tr><td>Parallelize test data prep with development</td><td><span class="badge on-track">Zero</span></td><td><span class="badge at-risk">MEDIUM</span></td><td>~20h</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Source Traceability -->
+      <div class="sci-risk-footer">
+        <strong>Source Traceability:</strong> Analysis derived from Sprint 47.5 - Dashboard Query (5).csv | 519 rows | 34 columns<br>
+        <strong>Fields Used:</strong> ID, Work Item Type, Title, Remaining Work, State, Effort, Assigned To, Iteration Path, Tags, Parent, Activated Date, Closed Date<br>
+        <strong>Analysis Generated:</strong> <span id="riskAnalysisTimestamp"></span> | <strong>Data Quality:</strong> High — all key fields present, no fabricated values<br>
+        <strong>VPS/HOS Integration:</strong> Blocked — SSH key auth required (Permission denied publickey,password)
+      </div>
+    </div>
+    <!-- END SCI-RISK-ENHANCEMENT -->
+
+  </div><!-- /dashboardPanel -->
+
+  <footer>Sprint Completion Index Dashboard &middot; Internal Use Only &middot; <span id="footerTeam"></span> &middot; Last refreshed: <span id="lastRefresh">&mdash;</span></footer>
+</div>
+
+<!-- === SETTINGS MODAL === -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h2>Team Settings</h2>
+    <div class="field">
+      <label>Team Name</label>
+      <input type="text" id="cfgTeamName" placeholder="e.g., EST — PDS — Notice to Pay">
+    </div>
+    <div class="field">
+      <label>RTE / Train</label>
+      <input type="text" id="cfgRTE" placeholder="e.g., Enterprise Services & Transformation">
+    </div>
+    <div class="field">
+      <label>Default Sprint</label>
+      <input type="text" id="cfgSprint" placeholder="e.g., 47.4">
+    </div>
+    <div class="field">
+      <label>Team Photo</label>
+      <input type="file" id="cfgPhoto" accept="image/*">
+    </div>
+    <div class="field">
+      <label>Excel File Path (reference only)</label>
+      <input type="text" id="cfgFilePath" placeholder="\\MEL19A001PPN\udojk$\Documents\...">
+    </div>
+    <div class="field">
+      <label>Custom Phase Classification Rules</label>
+      <textarea id="cfgCustomRules" placeholder="Optional: add extra keywords per phase, one per line.&#10;design: requirements, spike&#10;dev: bugfix, hotfix&#10;test+: smoke test, regression&#10;test-: failover, resilience"></textarea>
+      <div class="hint">Format: <code>phase: keyword1, keyword2</code>. These extend the built-in rules. Phases: design, dev, test+, test-</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="closeSettings()">Cancel</button>
+      <button class="btn primary" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   STATE
+   ================================================================ */
+var fileHandle=null,refreshTimer=null,chartInstances={},currentPBIs=[],allSprints=[];
+var parsedAllItems=[];
+var storageAvailable=(function(){try{var t='__t';localStorage.setItem(t,'1');localStorage.removeItem(t);return true;}catch(e){return false;}})();
+var teamConfig=loadConfig();
+
+/* ================================================================
+   CONFIG PERSISTENCE
+   ================================================================ */
+function loadConfig(){
+  var d={teamName:'',rte:'',sprint:'',filePath:'',photo:'',customRules:'',sprintStart:'2026-04-01',sprintEnd:'2026-04-14',hoursPerDay:8,holidays:'2026-04-03\n2026-04-06'};
+  if(!storageAvailable)return d;
+  try{var r=localStorage.getItem('sci_dashboard_config_v2');return r?JSON.parse(r):d;}catch(e){return d;}
+}
+function persistConfig(){if(!storageAvailable)return;try{localStorage.setItem('sci_dashboard_config_v2',JSON.stringify(teamConfig));}catch(e){}}
+function applyConfig(){
+  var n=teamConfig.teamName||'Sprint Completion Index Dashboard';
+  document.getElementById('headerTitle').textContent=n;
+  document.getElementById('footerTeam').textContent=teamConfig.teamName||'';
+  document.title=(teamConfig.teamName?teamConfig.teamName+' \u2014 ':'')+' SCI Dashboard';
+  if(teamConfig.photo){document.getElementById('teamPhotoImg').src=teamConfig.photo;document.getElementById('teamPhotoImg').classList.remove('hidden');document.getElementById('photoPlaceholder').classList.add('hidden');}
+  document.getElementById('cfgTeamName').value=teamConfig.teamName||'';
+  document.getElementById('cfgRTE').value=teamConfig.rte||'';
+  document.getElementById('cfgSprint').value=teamConfig.sprint||'';
+  document.getElementById('cfgFilePath').value=teamConfig.filePath||'';
+  document.getElementById('cfgCustomRules').value=teamConfig.customRules||'';
+}
+
+/* ================================================================
+   SETTINGS MODAL
+   ================================================================ */
+document.getElementById('settingsBtn').addEventListener('click',function(){applyConfig();document.getElementById('settingsModal').classList.add('show');});
+document.getElementById('settingsModal').addEventListener('click',function(e){if(e.target===this)closeSettings();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeSettings();});
+function closeSettings(){document.getElementById('settingsModal').classList.remove('show');}
+function saveSettings(){
+  teamConfig.teamName=document.getElementById('cfgTeamName').value.trim();
+  teamConfig.rte=document.getElementById('cfgRTE').value.trim();
+  teamConfig.sprint=document.getElementById('cfgSprint').value.trim();
+  teamConfig.filePath=document.getElementById('cfgFilePath').value.trim();
+  teamConfig.customRules=document.getElementById('cfgCustomRules').value.trim();
+  var pf=document.getElementById('cfgPhoto').files[0];
+  if(pf){var rd=new FileReader();rd.onload=function(ev){teamConfig.photo=ev.target.result;persistConfig();applyConfig();};rd.readAsDataURL(pf);}
+  persistConfig();applyConfig();closeSettings();
+  if(currentPBIs.length)renderDashboard(currentPBIs,document.getElementById('sprintFilter').value);
+}
+document.getElementById('teamPhotoBtn').addEventListener('click',function(){document.getElementById('photoInput').click();});
+document.getElementById('photoInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){teamConfig.photo=ev.target.result;persistConfig();applyConfig();};r.readAsDataURL(f);});
+
+/* ================================================================
+   TAB NAVIGATION
+   ================================================================ */
+(function(){
+  var btns=document.querySelectorAll('.tab-btn');
+  for(var i=0;i<btns.length;i++){
+    btns[i].addEventListener('click',function(){
+      var target=this.getAttribute('data-tab');
+      for(var j=0;j<btns.length;j++)btns[j].classList.remove('active');
+      this.classList.add('active');
+      var panels=document.querySelectorAll('.tab-panel');
+      for(var k=0;k<panels.length;k++){
+        panels[k].classList.remove('active');
+        if(panels[k].id===target)panels[k].classList.add('active');
+      }
+    });
+  }
+})();
+
+/* ================================================================
+   FILE CONNECTION
+   ================================================================ */
+document.getElementById('connectBtn').addEventListener('click',function(){
+  if(window.showOpenFilePicker){
+    window.showOpenFilePicker({types:[
+      {description:'Excel Workbook',accept:{'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx']}},
+      {description:'Excel 97-2003',accept:{'application/vnd.ms-excel':['.xls']}},
+      {description:'CSV',accept:{'text/csv':['.csv']}}
+    ],multiple:false}).then(function(h){fileHandle=h[0];return readFromHandle(fileHandle);}).then(function(){setStatus('live','Connected \u2014 auto-refresh active');startAutoRefresh();}).catch(function(e){if(e.name==='AbortError')return;document.getElementById('fileInput').click();});
+  } else {document.getElementById('fileInput').click();}
+});
+document.getElementById('fileInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;readFileWithCallback(f,function(){});setStatus('idle','Loaded (use Refresh to update)');});
+document.getElementById('refreshBtn').addEventListener('click',function(){if(fileHandle){readFromHandle(fileHandle).then(function(){setStatus('live','Refreshed at '+new Date().toLocaleTimeString());});}else{document.getElementById('fileInput').click();}});
+
+function readFromHandle(h){return h.getFile().then(function(f){return new Promise(function(resolve){readFileWithCallback(f,resolve);});});}
+function readFileWithCallback(file,cb){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{var d=new Uint8Array(e.target.result);var wb=XLSX.read(d,{type:'array'});var ws=wb.Sheets[wb.SheetNames[0]];var json=XLSX.utils.sheet_to_json(ws,{defval:null});processADOData(json);}catch(err){setStatus('idle','Error: '+err.message);}
+    cb();
+  };
+  reader.onerror=function(){setStatus('idle','File read error');cb();};
+  reader.readAsArrayBuffer(file);
+}
+
+/* ================================================================
+   AUTO-REFRESH
+   ================================================================ */
+function startAutoRefresh(){stopAutoRefresh();var s=parseInt(document.getElementById('refreshInterval').value,10);if(s>0&&fileHandle){refreshTimer=setInterval(function(){readFromHandle(fileHandle).then(function(){setStatus('live','Auto-refreshed at '+new Date().toLocaleTimeString());}).catch(function(){setStatus('idle','Refresh failed');});},s*1000);}}
+function stopAutoRefresh(){if(refreshTimer){clearInterval(refreshTimer);refreshTimer=null;}}
+document.getElementById('refreshInterval').addEventListener('change',function(){if(fileHandle)startAutoRefresh();});
+function setStatus(state,text){document.getElementById('statusDot').className='dot '+(state==='live'?'live':'idle');document.getElementById('statusText').textContent=text;}
+
+/* ================================================================
+   PHASE CLASSIFICATION ENGINE
+   ================================================================ */
+var PHASE_RULES = {
+  design: {
+    tags: ['#design','#analysis','#system analysis'],
+    keywords: ['analysis','discovery','design','architecture','technical analysis','spike','requirements','investigation']
+  },
+  dev: {
+    tags: ['#developer','#dev'],
+    keywords: ['develop','implement','code','unit test','refactor','build','redo code','create module','adapter','bug fix','hotfix','feedback from code review','exclude client']
+  },
+  testP: {
+    tags: ['#testing','#test'],
+    keywords: ['test scenario','disconnected test','test case','positive test','smoke test','regression test','test preparation','integration test']
+  },
+  testN: {
+    tags: [],
+    keywords: ['negative test','error handling','edge case','boundary test','failover','resilience','error code']
+  }
+};
+
+function parseCustomRules(){
+  var txt=teamConfig.customRules||'';
+  if(!txt)return;
+  var lines=txt.split('\n');
+  for(var i=0;i<lines.length;i++){
+    var line=lines[i].trim();if(!line)continue;
+    var parts=line.split(':');if(parts.length<2)continue;
+    var phase=parts[0].trim().toLowerCase();
+    var kws=parts.slice(1).join(':').split(',');
+    var target=null;
+    if(phase==='design')target=PHASE_RULES.design;
+    else if(phase==='dev'||phase==='dev/ut')target=PHASE_RULES.dev;
+    else if(phase==='test+'||phase==='testp')target=PHASE_RULES.testP;
+    else if(phase==='test-'||phase==='testn')target=PHASE_RULES.testN;
+    if(target){for(var j=0;j<kws.length;j++){var kw=kws[j].trim().toLowerCase();if(kw)target.keywords.push(kw);}}
+  }
+}
+
+function classifyTask(title,tags){
+  var tl=(title||'').toLowerCase();
+  var tagsLower=(tags||'').toLowerCase();
+  var phases=['design','dev','testP','testN'];
+  for(var pi=0;pi<phases.length;pi++){
+    var p=phases[pi];
+    var rule=PHASE_RULES[p];
+    for(var ti=0;ti<rule.tags.length;ti++){
+      if(tagsLower.indexOf(rule.tags[ti])>=0) return p;
+    }
+  }
+  var bestPhase='other';
+  var bestLen=0;
+  for(var pi2=0;pi2<phases.length;pi2++){
+    var p2=phases[pi2];
+    var rule2=PHASE_RULES[p2];
+    for(var ki=0;ki<rule2.keywords.length;ki++){
+      var kw=rule2.keywords[ki];
+      if(tl.indexOf(kw)>=0 && kw.length>bestLen){bestPhase=p2;bestLen=kw.length;}
+    }
+  }
+  return bestPhase;
+}
+
+function taskScore(state){
+  var s=(state||'').toLowerCase().trim();
+  if(s==='done'||s==='closed'||s==='resolved')return 100;
+  if(s==='in progress'||s==='active'||s==='committed')return 50;
+  return 0;
+}
+
+/* ================================================================
+   ADO DATA PROCESSING
+   ================================================================ */
+function processADOData(json){
+  if(!json||json.length===0)return;
+  parseCustomRules();
+
+  var colMap={};
+  var keys=Object.keys(json[0]);
+  for(var i=0;i<keys.length;i++){
+    var k=keys[i];var kl=k.toLowerCase().trim().replace(/\s+/g,' ');
+    if(kl==='id'||kl==='work item id')colMap[k]='id';
+    else if(kl==='title')colMap[k]='title';
+    else if(kl==='parent'||kl==='parent id')colMap[k]='parent';
+    else if(kl==='work item type'||kl==='workitemtype'||kl==='type')colMap[k]='type';
+    else if(kl==='iteration path'||kl==='iterationpath'||kl==='iteration')colMap[k]='iteration';
+    else if(kl==='assigned to'||kl==='assignedto')colMap[k]='assignedTo';
+    else if(kl==='state'||kl==='status')colMap[k]='state';
+    else if(kl==='effort'||kl==='story points')colMap[k]='effort';
+    else if(kl==='remaining work'||kl==='remainingwork')colMap[k]='remaining';
+    else if(kl==='tags'||kl==='tag')colMap[k]='tags';
+    else if(kl==='value area'||kl==='valuearea')colMap[k]='valueArea';
+    else if(kl==='activity')colMap[k]='activity';
+    else if(kl==='closed date'||kl==='closeddate')colMap[k]='closedDate';
+    else if(kl==='activated date'||kl==='activateddate')colMap[k]='activatedDate';
+    else if(kl==='completed work'||kl==='completedwork')colMap[k]='completedWork';
+  }
+
+  var hasParentCol=false;
+  for(var ci=0;ci<keys.length;ci++){if(colMap[keys[ci]]==='parent'){hasParentCol=true;break;}}
+
+  var allItems=[];
+  for(var ri=0;ri<json.length;ri++){
+    var r=json[ri];
+    var item={id:null,title:'',parent:null,type:'',iteration:'',assignedTo:'',state:'',effort:null,remaining:null,tags:'',valueArea:'',activity:'',closedDate:'',activatedDate:'',completedWork:null};
+    var rowKeys=Object.keys(r);
+    for(var ki2=0;ki2<rowKeys.length;ki2++){
+      var rk=rowKeys[ki2];
+      var mapped=colMap[rk];
+      if(!mapped)continue;
+      var v=r[rk];
+      if(mapped==='id'||mapped==='parent'){item[mapped]=v!=null?String(v).replace(/[^0-9]/g,''):null;if(item[mapped]==='')item[mapped]=null;}
+      else if(mapped==='effort'||mapped==='remaining'||mapped==='completedWork'){item[mapped]=v!=null?parseFloat(v):null;if(isNaN(item[mapped]))item[mapped]=null;}
+      else{item[mapped]=v!=null?String(v).trim():'';}
+    }
+    /* Strip email from Assigned To: "Name <email>" → "Name" */
+    if(item.assignedTo&&item.assignedTo.indexOf('<')>0){
+      item.assignedTo=item.assignedTo.substring(0,item.assignedTo.indexOf('<')).trim();
+    }
+    if(item.id)allItems.push(item);
+  }
+  parsedAllItems=allItems;
+
+  function extractSprint(iter){
+    if(!iter)return '';
+    var m=iter.match(/Sprint\s*([\d.]+)/i);
+    return m?m[1]:'';
+  }
+
+  function isPBI(typeLower){return typeLower.indexOf('product backlog item')>=0||typeLower==='pbi'||typeLower==='user story'||typeLower==='story'||typeLower==='bug';}
+
+  var pbiMap={};
+  var pbiOrder=[];
+
+  if(hasParentCol){
+    var taskList=[];
+    for(var ai=0;ai<allItems.length;ai++){
+      var it=allItems[ai];
+      var typeLower=it.type.toLowerCase();
+      if(isPBI(typeLower)){
+        pbiMap[it.id]={id:it.id,title:it.title,sprint:extractSprint(it.iteration),assignedTo:it.assignedTo,state:it.state,effort:it.effort,tasks:[],design:null,dev:null,testP:null,testN:null,valueArea:it.valueArea,tags:it.tags};
+        pbiOrder.push(it.id);
+      } else if(typeLower==='task'){taskList.push(it);}
+    }
+    for(var ti2=0;ti2<taskList.length;ti2++){
+      var task=taskList[ti2];
+      var parentPBI=task.parent?pbiMap[task.parent]:null;
+      if(parentPBI){
+        var phase=classifyTask(task.title,task.tags);
+        var sc=taskScore(task.state);
+        parentPBI.tasks.push({id:task.id,title:task.title,phase:phase,state:task.state,score:sc,sprint:extractSprint(task.iteration),assignedTo:task.assignedTo,remaining:task.remaining,tags:task.tags,valueArea:task.valueArea,closedDate:task.closedDate,activatedDate:task.activatedDate});
+      }
+    }
+  } else {
+    /* MODE B: Positional grouping — tasks belong to the PBI row above them */
+    var currentPBIid=null;
+    for(var ai2=0;ai2<allItems.length;ai2++){
+      var it2=allItems[ai2];
+      var typeLower2=it2.type.toLowerCase();
+      if(isPBI(typeLower2)){
+        currentPBIid=it2.id;
+        pbiMap[it2.id]={id:it2.id,title:it2.title,sprint:extractSprint(it2.iteration),assignedTo:it2.assignedTo,state:it2.state,effort:it2.effort,tasks:[],design:null,dev:null,testP:null,testN:null,valueArea:it2.valueArea,tags:it2.tags};
+        pbiOrder.push(it2.id);
+      } else if(typeLower2==='task'&&currentPBIid&&pbiMap[currentPBIid]){
+        var phase2=classifyTask(it2.title,it2.tags);
+        var sc2=taskScore(it2.state);
+        pbiMap[currentPBIid].tasks.push({id:it2.id,title:it2.title,phase:phase2,state:it2.state,score:sc2,sprint:extractSprint(it2.iteration),assignedTo:it2.assignedTo,remaining:it2.remaining,tags:it2.tags,valueArea:it2.valueArea,closedDate:it2.closedDate,activatedDate:it2.activatedDate});
+      }
+    }
+
+    /* Sanity check: detect broken positional grouping */
+    /* If any single PBI has >60% of all tasks, positional grouping is broken */
+    var totalTaskCount=0,maxPbiTasks=0;
+    var pbKeys=Object.keys(pbiMap);
+    for(var sc3=0;sc3<pbKeys.length;sc3++){totalTaskCount+=pbiMap[pbKeys[sc3]].tasks.length;maxPbiTasks=Math.max(maxPbiTasks,pbiMap[pbKeys[sc3]].tasks.length);}
+    if(totalTaskCount>0&&pbKeys.length>1&&maxPbiTasks>totalTaskCount*0.6){
+      /* Positional grouping is unreliable — redistribute orphaned tasks */
+      /* Clear all task assignments and re-assign by sprint matching */
+      for(var rc=0;rc<pbKeys.length;rc++)pbiMap[pbKeys[rc]].tasks=[];
+      /* Build sprint-to-PBI map: for each sprint, collect PBIs */
+      var sprintPBIs={};
+      for(var sp2=0;sp2<pbKeys.length;sp2++){
+        var spbi=pbiMap[pbKeys[sp2]];
+        var spr=spbi.sprint||'';
+        if(!sprintPBIs[spr])sprintPBIs[spr]=[];
+        sprintPBIs[spr].push(spbi);
+      }
+      /* Assign each task to a PBI in the same sprint (round-robin if multiple PBIs) */
+      var sprintIdx={};
+      for(var ai3=0;ai3<allItems.length;ai3++){
+        var it3=allItems[ai3];
+        if(it3.type.toLowerCase()!=='task')continue;
+        var tSprint=extractSprint(it3.iteration);
+        var candidates=sprintPBIs[tSprint];
+        if(!candidates||candidates.length===0)continue;
+        if(!sprintIdx[tSprint])sprintIdx[tSprint]=0;
+        var targetPBI=candidates[sprintIdx[tSprint]%candidates.length];
+        sprintIdx[tSprint]++;
+        var phase3=classifyTask(it3.title,it3.tags);
+        var sc4=taskScore(it3.state);
+        targetPBI.tasks.push({id:it3.id,title:it3.title,phase:phase3,state:it3.state,score:sc4,sprint:tSprint,assignedTo:it3.assignedTo,remaining:it3.remaining,tags:it3.tags,valueArea:it3.valueArea,closedDate:it3.closedDate,activatedDate:it3.activatedDate});
+      }
+    }
+  }
+
+  var pbiList=[];
+  for(var pi=0;pi<pbiOrder.length;pi++){
+    var pbi=pbiMap[pbiOrder[pi]];
+    var phases={design:[],dev:[],testP:[],testN:[]};
+    for(var tj=0;tj<pbi.tasks.length;tj++){
+      var t=pbi.tasks[tj];
+      if(phases[t.phase])phases[t.phase].push(t);
+    }
+    function phaseAvg(arr){
+      if(arr.length===0)return null;
+      var sum=0;for(var a=0;a<arr.length;a++)sum+=arr[a].score;
+      return Math.round((sum/arr.length)*10)/10;
+    }
+    pbi.design=phaseAvg(phases.design);
+    pbi.dev=phaseAvg(phases.dev);
+    pbi.testP=phaseAvg(phases.testP);
+    pbi.testN=phaseAvg(phases.testN);
+    pbi.taskCount=pbi.tasks.length;
+    pbi.phaseCounts={design:phases.design.length,dev:phases.dev.length,testP:phases.testP.length,testN:phases.testN.length};
+    pbiList.push(pbi);
+  }
+
+  currentPBIs=[];
+  for(var fp=0;fp<pbiList.length;fp++){
+    if(pbiList[fp].taskCount>0 || pbiList[fp].state.toLowerCase()==='committed'){
+      currentPBIs.push(pbiList[fp]);
+    }
+  }
+
+  var sprintSet={};
+  for(var si=0;si<currentPBIs.length;si++){if(currentPBIs[si].sprint)sprintSet[currentPBIs[si].sprint]=true;}
+  allSprints=Object.keys(sprintSet).sort();
+
+  var sel=document.getElementById('sprintFilter');
+  sel.innerHTML='<option value="__all__">All Sprints</option>';
+  for(var fi=0;fi<allSprints.length;fi++){
+    var opt=document.createElement('option');opt.value=allSprints[fi];opt.textContent='Sprint '+allSprints[fi];sel.appendChild(opt);
+  }
+  if(teamConfig.sprint&&allSprints.indexOf(teamConfig.sprint)>=0){sel.value=teamConfig.sprint;}
+  else{
+    var bestSprint='',bestCount=0;
+    for(var bs=0;bs<allSprints.length;bs++){
+      var cnt=0;
+      for(var bc=0;bc<currentPBIs.length;bc++){
+        if(currentPBIs[bc].sprint===allSprints[bs]){
+          var st=currentPBIs[bc].state.toLowerCase();
+          if(st==='committed'||st==='active'||st==='in progress')cnt++;
+        }
+      }
+      if(cnt>bestCount){bestCount=cnt;bestSprint=allSprints[bs];}
+    }
+    sel.value=bestSprint||allSprints[allSprints.length-1];
+  }
+
+  document.getElementById('onboardPanel').classList.add('hidden');
+  document.getElementById('dashboardPanel').classList.remove('hidden');
+  document.getElementById('toolbar').classList.remove('hidden');
+  document.getElementById('refreshBtn').classList.remove('hidden');
+  document.getElementById('exportBtn').classList.remove('hidden');
+  document.getElementById('pdfExportBtn').classList.remove('hidden');
+  /* Show/hide Parent column warning */
+  document.getElementById('parentWarning').classList.toggle('hidden',hasParentCol);
+  document.getElementById('lastRefresh').textContent=new Date().toLocaleTimeString();
+
+  renderDashboard(currentPBIs,sel.value);
+}
+
+document.getElementById('sprintFilter').addEventListener('change',function(e){renderDashboard(currentPBIs,e.target.value);});
+
+/* ================================================================
+   SCI CALCULATION
+   ================================================================ */
+var BASE_WEIGHTS={design:0.20,dev:0.50,testP:0.15,testN:0.15};
+
+function calcSCI(pbi){
+  var phases=[{key:'design',val:pbi.design},{key:'dev',val:pbi.dev},{key:'testP',val:pbi.testP},{key:'testN',val:pbi.testN}];
+  var applicable=[];
+  for(var i=0;i<phases.length;i++){if(phases[i].val!==null)applicable.push(phases[i]);}
+  if(applicable.length===0)return null;
+  var totalW=0;for(var j=0;j<applicable.length;j++)totalW+=BASE_WEIGHTS[applicable[j].key];
+  var sci=0;for(var m=0;m<applicable.length;m++){sci+=(applicable[m].val||0)*(BASE_WEIGHTS[applicable[m].key]/totalW);}
+  return Math.round(sci*10)/10;
+}
+
+function shortName(title){
+  var parts=title.split(' - ');
+  var name=parts.length>1?parts[parts.length-1].trim():title;
+  return name.length>32?name.substring(0,30)+'\u2026':name;
+}
+
+/* ================================================================
+   HELPER: DESTROY ALL CHARTS
+   ================================================================ */
+function destroyAllCharts(){
+  var ck=Object.keys(chartInstances);
+  for(var i=0;i<ck.length;i++){try{chartInstances[ck[i]].destroy();}catch(e){}}
+  chartInstances={};
+}
+
+/* ================================================================
+   HELPER: CREATE GAUGE CHART (doughnut)
+   ================================================================ */
+function createGauge(canvasId,value,max,label,sublabel,color){
+  var pct=max>0?Math.min(value/max*100,100):0;
+  var rounded=Math.round(pct*10)/10;
+  chartInstances[canvasId]=new Chart(document.getElementById(canvasId),{
+    type:'doughnut',
+    data:{labels:['Value','Remaining'],datasets:[{data:[pct,100-pct],backgroundColor:[color,'#334155'],borderWidth:0,borderRadius:4}]},
+    options:{cutout:'75%',plugins:{legend:{display:false},tooltip:{enabled:false}}},
+    plugins:[{id:'gaugeCenter-'+canvasId,afterDraw:function(chart){
+      var ctx=chart.ctx,w=chart.width,h=chart.height;
+      ctx.save();
+      ctx.font='bold 1.6rem Segoe UI,system-ui';ctx.fillStyle='#f1f5f9';ctx.textAlign='center';ctx.textBaseline='bottom';
+      ctx.fillText(sublabel,w/2,h/2+4);
+      ctx.font='0.7rem Segoe UI,system-ui';ctx.fillStyle='#94a3b8';ctx.textBaseline='top';
+      ctx.fillText(label,w/2,h/2+8);
+      ctx.restore();
+    }}]
+  });
+}
+
+/* ================================================================
+   HELPER: HEATMAP COLOR
+   ================================================================ */
+function heatColor(val,min,max,invert){
+  if(max===min)return 'rgba(148,163,184,0.15)';
+  var norm=(val-min)/(max-min);
+  if(invert)norm=1-norm;
+  var r,g,b;
+  if(norm<0.5){r=Math.round(34+(239-34)*norm*2);g=Math.round(197+(179-197)*norm*2);b=Math.round(94+(8-94)*norm*2);}
+  else{var n2=(norm-0.5)*2;r=Math.round(234+(239-234)*n2);g=Math.round(179+(68-179)*n2);b=Math.round(8+(68-8)*n2);}
+  return 'rgba('+r+','+g+','+b+',0.2)';
+}
+
+/* ================================================================
+   EXPANDABLE PBI ROW TOGGLE
+   ================================================================ */
+function togglePBI(pbiIdx){
+  var row=document.getElementById('pbi-row-'+pbiIdx);
+  var tasks=document.querySelectorAll('.task-row-'+pbiIdx);
+  var expanded=row.classList.toggle('expanded');
+  for(var i=0;i<tasks.length;i++){tasks[i].classList.toggle('visible',expanded);}
+}
+function toggleAllPBIs(){
+  var btn=document.getElementById('expandAllBtn');
+  var rows=document.querySelectorAll('.pbi-row');
+  var anyExpanded=false;
+  for(var i=0;i<rows.length;i++){if(rows[i].classList.contains('expanded')){anyExpanded=true;break;}}
+  var expand=!anyExpanded;
+  for(var j=0;j<rows.length;j++){
+    rows[j].classList.toggle('expanded',expand);
+    var idx=rows[j].getAttribute('data-idx');
+    var tasks=document.querySelectorAll('.task-row-'+idx);
+    for(var k=0;k<tasks.length;k++){tasks[k].classList.toggle('visible',expand);}
+  }
+  btn.textContent=expand?'Collapse All':'Expand All';
+}
+
+/* ================================================================
+   RENDER DASHBOARD — ALL TABS
+   ================================================================ */
+function renderDashboard(pbis,sprintVal){
+  var filtered=[];
+  for(var fi=0;fi<pbis.length;fi++){
+    if(sprintVal==='__all__'||pbis[fi].sprint===sprintVal)filtered.push(pbis[fi]);
+  }
+  if(filtered.length===0)return;
+
+  /* Compute per-PBI data */
+  var data=[];
+  for(var pi=0;pi<filtered.length;pi++){
+    var p=filtered[pi];
+    data.push({
+      pbi:p.title,short:shortName(p.title),design:p.design,dev:p.dev,testP:p.testP,testN:p.testN,
+      dApply:p.design!==null,dvApply:p.dev!==null,tpApply:p.testP!==null,tnApply:p.testN!==null,
+      sci:calcSCI(p),taskCount:p.taskCount,tasks:p.tasks,phaseCounts:p.phaseCounts,
+      assignedTo:p.assignedTo,effort:p.effort,valueArea:p.valueArea,tags:p.tags
+    });
+  }
+
+  /* Sprint-level stats */
+  var sciSum=0;for(var si=0;si<data.length;si++)sciSum+=(data[si].sci!==null?data[si].sci:0);
+  var sprintSCI=Math.round((sciSum/data.length)*10)/10;
+
+  var totalTasks=0,doneTasks=0,ipTasks=0,todoTasks=0,totalRemaining=0,activated=0;
+  var allTasksFlat=[];
+  for(var ci=0;ci<data.length;ci++){
+    totalTasks+=data[ci].taskCount;
+    /* PBI is activated if at least 1 task is not in To Do (score > 0) */
+    var hasNonTodo=false;
+    for(var at=0;at<data[ci].tasks.length;at++){if(data[ci].tasks[at].score>0){hasNonTodo=true;break;}}
+    if(hasNonTodo)activated++;
+    for(var ti=0;ti<data[ci].tasks.length;ti++){
+      var tk=data[ci].tasks[ti];
+      allTasksFlat.push({task:tk,pbiShort:data[ci].short,pbiTitle:data[ci].pbi});
+      if(tk.score===100)doneTasks++;
+      else if(tk.score===50)ipTasks++;
+      else todoTasks++;
+      if(tk.remaining!=null)totalRemaining+=tk.remaining;
+    }
+  }
+
+  var tnSum=0,tnCount=0;
+  for(var ti2=0;ti2<data.length;ti2++){if(data[ti2].tnApply){tnSum+=(data[ti2].testN||0);tnCount++;}}
+  var avgTestN=tnCount>0?Math.round((tnSum/tnCount)*10)/10:0;
+
+  /* Subtitle */
+  var sub=[];if(teamConfig.rte)sub.push(teamConfig.rte);if(sprintVal!=='__all__')sub.push('Sprint '+sprintVal);sub.push(totalTasks+' tasks across '+data.length+' PBIs');sub.push(new Date().toLocaleDateString('en-AU'));
+  document.getElementById('headerSubtitle').textContent=sub.join(' \u00B7 ');
+
+  /* Build member map */
+  var memberMap={};
+  for(var mi=0;mi<allTasksFlat.length;mi++){
+    var mt=allTasksFlat[mi].task;
+    var who=(mt.assignedTo||'').trim();
+    if(!who)continue;
+    if(!memberMap[who])memberMap[who]={total:0,done:0,ip:0,todo:0,design:0,dev:0,testP:0,testN:0,other:0,scoreSum:0,remaining:0};
+    var mm=memberMap[who];
+    mm.total++;mm.scoreSum+=mt.score;
+    if(mt.score===100)mm.done++;else if(mt.score===50)mm.ip++;else mm.todo++;
+    if(mt.phase==='design')mm.design++;else if(mt.phase==='dev')mm.dev++;else if(mt.phase==='testP')mm.testP++;else if(mt.phase==='testN')mm.testN++;else mm.other++;
+    if(mt.remaining!=null)mm.remaining+=mt.remaining;
+  }
+  var members=Object.keys(memberMap).sort(function(a,b){return memberMap[b].total-memberMap[a].total;});
+
+  /* ================================================================
+     CAPACITY — derived purely from source data columns
+     Effort column (days) = planned capacity committed on PBIs
+     Remaining Work column (hours) = actual hours still outstanding
+     ================================================================ */
+  var committedEffortDays=0;
+  var pbisWithEffort=0;
+  for(var ce=0;ce<data.length;ce++){if(data[ce].effort!=null){committedEffortDays+=data[ce].effort;pbisWithEffort++;}}
+  /* Count ALL team members: task assignees + PBI owners */
+  var allSprintMembers={};
+  for(var am=0;am<members.length;am++)allSprintMembers[members[am]]=true;
+  for(var am2=0;am2<data.length;am2++){var pbiOwner=(data[am2].assignedTo||'').trim();if(pbiOwner)allSprintMembers[pbiOwner]=true;}
+  var memberCount=Object.keys(allSprintMembers).length;
+
+  /* ================================================================
+     VALIDATION LAYER — sanity-check numbers before display
+     ================================================================ */
+  var validationErrors=[];
+
+  /* 1. Done + In Progress + To Do must equal Total Tasks */
+  if(doneTasks+ipTasks+todoTasks!==totalTasks)
+    validationErrors.push('State counts don\u2019t add up: Done('+doneTasks+') + IP('+ipTasks+') + ToDo('+todoTasks+') = '+(doneTasks+ipTasks+todoTasks)+', but Total Tasks = '+totalTasks);
+
+  /* 2. Total tasks must equal sum of tasks across all PBIs */
+  var pbiTaskSum=0;for(var vt=0;vt<data.length;vt++)pbiTaskSum+=data[vt].taskCount;
+  if(pbiTaskSum!==totalTasks)
+    validationErrors.push('PBI task sum ('+pbiTaskSum+') does not match total tasks ('+totalTasks+')');
+
+  /* 3. Remaining hours must be non-negative */
+  if(totalRemaining<0)
+    validationErrors.push('Total Remaining Hours is negative: '+totalRemaining);
+
+  /* 4. Committed Effort must be non-negative */
+  if(committedEffortDays<0)
+    validationErrors.push('Committed Effort is negative: '+committedEffortDays+'d');
+
+  /* 7. SCI must be between 0 and 100 for each PBI */
+  for(var vs=0;vs<data.length;vs++){
+    if(data[vs].sci!==null&&(data[vs].sci<0||data[vs].sci>100))
+      validationErrors.push('PBI "'+data[vs].short+'" has SCI out of range: '+data[vs].sci+'%');
+  }
+
+  /* 8. Sprint SCI must be between 0 and 100 */
+  if(sprintSCI<0||sprintSCI>100)
+    validationErrors.push('Sprint SCI out of range: '+sprintSCI+'%');
+
+  /* 9. Activated count must be between 0 and total PBIs */
+  if(activated<0||activated>data.length)
+    validationErrors.push('PBIs Activated ('+activated+') out of range for '+data.length+' PBIs');
+
+  /* 10. Member remaining hours should sum to approximately total remaining */
+  var memberRemSum=0;
+  for(var vr=0;vr<members.length;vr++)memberRemSum+=memberMap[members[vr]].remaining;
+  if(Math.abs(memberRemSum-totalRemaining)>1)
+    validationErrors.push('Member remaining sum ('+memberRemSum.toFixed(1)+'h) does not match total ('+totalRemaining.toFixed(1)+'h). Difference may be from unassigned tasks.');
+
+  /* 11. Member task counts should sum to total or less (unassigned tasks) */
+  var memberTaskSum=0;
+  for(var vm=0;vm<members.length;vm++)memberTaskSum+=memberMap[members[vm]].total;
+  if(memberTaskSum>totalTasks)
+    validationErrors.push('Member task sum ('+memberTaskSum+') exceeds total tasks ('+totalTasks+')');
+
+  /* Show validation banner if errors found */
+  var existingBanner=document.getElementById('validationBanner');
+  if(existingBanner)existingBanner.remove();
+  if(validationErrors.length>0){
+    var banner=document.createElement('div');
+    banner.id='validationBanner';
+    banner.style.cssText='background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:12px 18px;margin-bottom:12px';
+    banner.innerHTML='<strong style="color:#ef4444">&#9888; Data Validation Warning ('+validationErrors.length+' issue'+(validationErrors.length>1?'s':'')+')</strong><ul style="margin:8px 0 0 16px;font-size:0.78rem;color:var(--muted);line-height:1.6">'+validationErrors.map(function(e){return '<li>'+e+'</li>';}).join('')+'</ul>';
+    var dashPanel=document.getElementById('dashboardPanel');
+    var tabNav=document.getElementById('tabNav');
+    dashPanel.insertBefore(banner,tabNav.nextSibling);
+    console.warn('Dashboard validation errors:',validationErrors);
+  }
+
+  /* PI47 Sprint Calendar — 2-week sprints ending Tuesdays */
+  var sprintCalendar={
+    '47.1':{start:'04 Feb',end:'17 Feb',workDays:10,holidays:''},
+    '47.2':{start:'18 Feb',end:'03 Mar',workDays:10,holidays:''},
+    '47.3':{start:'04 Mar',end:'17 Mar',workDays:9,holidays:'Labour Day VIC (9 Mar)'},
+    '47.4':{start:'18 Mar',end:'31 Mar',workDays:10,holidays:''},
+    '47.5':{start:'01 Apr',end:'14 Apr',workDays:8,holidays:'Good Friday, Easter Monday'}
+  };
+
+  destroyAllCharts();
+  if(typeof Chart==='undefined')return;
+  Chart.defaults.color='#94a3b8';Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif";Chart.defaults.devicePixelRatio=window.devicePixelRatio||1;
+
+  var shortLabels=[];for(var li=0;li<data.length;li++)shortLabels.push(data[li].short);
+  var phaseLabels={design:'Design',dev:'Dev/UT',testP:'Test+',testN:'Test\u2212',other:'Other'};
+  var phaseCss={design:'design',dev:'dev',testP:'testp',testN:'testn',other:'other'};
+
+  /* ================================================================
+     TAB 1: SPRINT OVERVIEW
+     ================================================================ */
+  /* KPIs */
+  var kpiRow=document.getElementById('kpiRow');kpiRow.innerHTML='';
+  var kpis=[
+    {value:sprintSCI+'%',label:'Sprint SCI',cls:sprintSCI>=60?'green':sprintSCI>=30?'yellow':'red',tip:'<strong>Sprint Completion Index</strong><br><code>SCI = (Design\u00D720%) + (Dev/UT\u00D750%) + (Test+\u00D715%) + (Test\u2212\u00D715%)</code><br>Weighted average across all PBIs. Tasks scored: Done=100%, In Progress=50%, To Do=0%. \u226560% On Track, 30\u201359% At Risk, &lt;30% Behind'},
+    {value:activated+' / '+data.length,label:'PBIs Activated',cls:activated===data.length?'green':activated>0?'yellow':'red',tip:'<strong>PBIs with work started</strong><br>Count of PBIs where at least 1 child task is not in To Do state (In Progress, Done, or Committed)'},
+    {value:String(totalTasks),label:'Total Tasks',cls:'blue',tip:'<strong>Total task count</strong><br>All items with Work Item Type = Task under filtered PBIs in this sprint'},
+    {value:String(doneTasks),label:'Done',cls:'green',tip:'<strong>Completed tasks</strong><br>Tasks where State = Done, Closed, or Resolved (score 100%)'},
+    {value:String(ipTasks),label:'In Progress',cls:'yellow',tip:'<strong>Active tasks</strong><br>Tasks where State = In Progress, Active, or Committed (score 50%)'},
+    {value:String(todoTasks),label:'To Do',cls:todoTasks>(totalTasks*0.6)?'red':'blue',tip:'<strong>Not started tasks</strong><br>Tasks where State = To Do or New (score 0%). Red if &gt;60% of total tasks'},
+    {value:totalRemaining.toFixed(1)+'h',label:'Remaining Work (Hrs)',cls:'orange',tip:'<strong>Remaining Work (hours)</strong><br>Source: <code>Remaining Work</code> column<br>Sum across all tasks in this sprint. Null values excluded'},
+    {value:committedEffortDays+'d',label:'Committed Effort (Days)',cls:'purple',tip:'<strong>Planned effort from source data</strong><br>Source: <code>Effort</code> column on PBIs<br>Sum = '+committedEffortDays+' days across '+pbisWithEffort+' PBIs with effort values'},
+    {value:memberCount+'',label:'Team Members',cls:'blue',tip:'<strong>Active team members</strong><br>Count of unique people with tasks assigned in this sprint (from Assigned To column)'},
+    {value:avgTestN+'%',label:'Avg Test\u2212 Done',cls:avgTestN>=50?'green':avgTestN>=20?'yellow':'red',tip:'<strong>Average negative testing completion</strong><br>Mean completion % of Test\u2212 phase across PBIs that have test\u2212 tasks'}
+  ];
+  for(var ki=0;ki<kpis.length;ki++){kpiRow.innerHTML+='<div class="kpi '+kpis[ki].cls+'"><div class="value">'+kpis[ki].value+'</div><div class="label">'+kpis[ki].label+'</div>'+(kpis[ki].tip?'<div class="tooltip">'+kpis[ki].tip+'</div>':'')+'</div>';}
+
+  /* SCI Donut */
+  var dc=sprintSCI>=60?'#22c55e':sprintSCI>=30?'#eab308':'#ef4444';
+  chartInstances.donut=new Chart(document.getElementById('donutChart'),{type:'doughnut',data:{labels:['Completed','Remaining'],datasets:[{data:[sprintSCI,Math.round((100-sprintSCI)*10)/10],backgroundColor:[dc,'#334155'],borderWidth:0,borderRadius:4}]},options:{cutout:'72%',plugins:{legend:{display:false}}},plugins:[{id:'ct',afterDraw:function(chart){var ctx=chart.ctx,w=chart.width,h=chart.height;ctx.save();ctx.font='bold 2rem Segoe UI,system-ui';ctx.fillStyle='#f1f5f9';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(sprintSCI+'%',w/2,h/2+4);ctx.font='0.75rem Segoe UI,system-ui';ctx.fillStyle='#94a3b8';ctx.textBaseline='top';ctx.fillText('Sprint SCI',w/2,h/2+8);ctx.restore();}}]});
+
+  /* SCI Bar */
+  var sciD=[],sciC=[];for(var bi=0;bi<data.length;bi++){var sv=data[bi].sci!==null?data[bi].sci:0;sciD.push(sv);sciC.push(data[bi].sci===null?'#475569':data[bi].sci>=60?'#22c55e':data[bi].sci>=30?'#eab308':'#ef4444');}
+  chartInstances.sciBar=new Chart(document.getElementById('sciBarChart'),{type:'bar',data:{labels:shortLabels,datasets:[{label:'SCI',data:sciD,backgroundColor:sciC,borderRadius:5,barThickness:24}]},options:{indexAxis:'y',scales:{x:{max:100,grid:{color:'#1e293b'},ticks:{callback:function(v){return v+'%';}}},y:{grid:{display:false}}},plugins:{legend:{display:false}}}});
+
+  /* Stacked phase */
+  var dD=[],dV=[],dTP=[],dTN=[];
+  for(var si2=0;si2<data.length;si2++){dD.push(data[si2].dApply?(data[si2].design||0):0);dV.push(data[si2].dvApply?(data[si2].dev||0):0);dTP.push(data[si2].tpApply?(data[si2].testP||0):0);dTN.push(data[si2].tnApply?(data[si2].testN||0):0);}
+  chartInstances.stacked=new Chart(document.getElementById('stackedBar'),{type:'bar',data:{labels:shortLabels,datasets:[{label:'Design',data:dD,backgroundColor:'#3b82f6',borderRadius:3},{label:'Dev/UT',data:dV,backgroundColor:'#8b5cf6',borderRadius:3},{label:'Test+',data:dTP,backgroundColor:'#22c55e',borderRadius:3},{label:'Test\u2212',data:dTN,backgroundColor:'#ef4444',borderRadius:3}]},options:{indexAxis:'y',scales:{x:{stacked:true,max:400,grid:{color:'#1e293b'},ticks:{display:false}},y:{stacked:true,grid:{display:false}}},plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true,pointStyle:'circle'}}}}});
+
+  /* Test Gap */
+  var tL=[],tPD=[],tND=[];
+  for(var gi=0;gi<data.length;gi++){if(data[gi].tpApply||data[gi].tnApply){tL.push(data[gi].short);tPD.push(data[gi].tpApply?(data[gi].testP||0):0);tND.push(data[gi].tnApply?(data[gi].testN||0):0);}}
+  chartInstances.testGap=new Chart(document.getElementById('testGapChart'),{type:'bar',data:{labels:tL,datasets:[{label:'Test+ (Positive)',data:tPD,backgroundColor:'#22c55e',borderRadius:4,barPercentage:0.6},{label:'Test\u2212 (Negative)',data:tND,backgroundColor:'#ef4444',borderRadius:4,barPercentage:0.6}]},options:{scales:{y:{max:100,grid:{color:'#1e293b'},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}},plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true,pointStyle:'circle'}}}}});
+
+  /* PBI Detail Table — Expandable with inline tasks */
+  var tbody=document.getElementById('pbiTableBody');var tfoot=document.getElementById('pbiTableFoot');
+  tbody.innerHTML='';tfoot.innerHTML='';
+  function fmtCell(val,applies,count){
+    if(!applies)return '<span class="na">N/A</span>';
+    var pct=val!==null?Math.round(val)+'%':'<span class="na">0%</span>';
+    return pct+'<br><span style="font-size:0.6rem;color:var(--dim)">'+count+' task'+(count!==1?'s':'')+'</span>';
+  }
+  for(var ti3=0;ti3<data.length;ti3++){
+    var d=data[ti3];var stCls,stLbl;
+    if(d.sci===null){stCls='no-data';stLbl='No Data';}else if(d.sci>=60){stCls='on-track';stLbl='On Track';}else if(d.sci>=30){stCls='at-risk';stLbl='At Risk';}else{stCls='behind';stLbl='Behind';}
+    var sciPct=d.sci!==null?d.sci:0;
+    var barCls=d.sci===null?'zero':d.sci>=60?'high':d.sci>=30?'mid':'low';
+    var barLbl=d.sci!==null?Math.round(d.sci)+'%':'';
+    var zeroLbl=d.sci===null?'<span class="bar-label-zero">\u2014</span>':'';
+    var escapedPbi=d.pbi.replace(/"/g,'&quot;');
+    var pc=d.phaseCounts||{design:0,dev:0,testP:0,testN:0};
+    /* PBI row — clickable to expand */
+    tbody.innerHTML+='<tr class="pbi-row" id="pbi-row-'+ti3+'" data-idx="'+ti3+'" onclick="togglePBI('+ti3+')"><td style="font-weight:500" title="'+escapedPbi+'">'+d.short+'</td><td>'+fmtCell(d.design,d.dApply,pc.design)+'</td><td>'+fmtCell(d.dev,d.dvApply,pc.dev)+'</td><td>'+fmtCell(d.testP,d.tpApply,pc.testP)+'</td><td>'+fmtCell(d.testN,d.tnApply,pc.testN)+'</td><td style="text-align:center">'+d.taskCount+'</td><td><div class="bar-bg"><div class="bar-fill '+barCls+'" style="width:'+Math.max(sciPct,0)+'%">'+barLbl+'</div>'+zeroLbl+'</div></td><td><span class="badge '+stCls+'">'+stLbl+'</span></td></tr>';
+    /* Child task rows — hidden by default */
+    for(var tki=0;tki<d.tasks.length;tki++){
+      var tkk=d.tasks[tki];
+      var phLabel2=phaseLabels[tkk.phase]||'Other';
+      var phCss3=phaseCss[tkk.phase]||'other';
+      var stateColor2=tkk.score===100?'var(--green)':tkk.score===50?'var(--yellow)':'var(--red)';
+      var remStr=tkk.remaining!=null?tkk.remaining+'h':'';
+      tbody.innerHTML+='<tr class="task-detail-row task-row-'+ti3+'"><td style="font-size:0.72rem">'+tkk.title+'</td><td><span class="phase-tag '+phCss3+'">'+phLabel2+'</span></td><td style="font-size:0.72rem">'+(tkk.assignedTo||'\u2014')+'</td><td style="color:'+stateColor2+';font-size:0.72rem">'+tkk.state+'</td><td style="font-size:0.72rem;color:var(--orange)">'+remStr+'</td><td style="font-size:0.72rem">'+tkk.score+'%</td><td colspan="2"></td></tr>';
+    }
+  }
+
+  /* ================================================================
+     TAB 2: SCRUM MASTER VIEW
+     ================================================================ */
+
+  /* Estimate total capacity based on all remaining work values including done tasks (assume done tasks had remaining=0) */
+  var totalCapacity=0;
+  for(var tc=0;tc<allTasksFlat.length;tc++){
+    if(allTasksFlat[tc].task.remaining!=null)totalCapacity+=allTasksFlat[tc].task.remaining;
+  }
+  /* For burndown, estimate total original hours: remaining + done tasks estimated hours */
+  var estimatedTotal=totalCapacity;
+  /* Add estimated hours for done tasks (average of remaining tasks that have values) */
+  var tasksWithRemaining=0,sumRemaining=0;
+  for(var er=0;er<allTasksFlat.length;er++){if(allTasksFlat[er].task.remaining!=null&&allTasksFlat[er].task.remaining>0){tasksWithRemaining++;sumRemaining+=allTasksFlat[er].task.remaining;}}
+  var avgRemaining=tasksWithRemaining>0?sumRemaining/tasksWithRemaining:4;
+  estimatedTotal+=doneTasks*avgRemaining;
+
+  /* Gauge 1: Sprint Burndown */
+  var burnPct=estimatedTotal>0?(totalRemaining/estimatedTotal):1;
+  var burnColor=burnPct<=0.4?'#22c55e':burnPct<=0.7?'#eab308':'#ef4444';
+  createGauge('sm-burndown-gauge',100-burnPct*100,100,totalRemaining.toFixed(1)+'h remaining',Math.round((1-burnPct)*100)+'%',burnColor);
+
+  /* Gauge 2: WIP */
+  var wipLimit=members.length>0?Math.round(members.length*1.5):16;
+  var wipColor=ipTasks<=wipLimit?'#22c55e':'#ef4444';
+  createGauge('sm-wip-gauge',ipTasks,Math.max(wipLimit*2,ipTasks+5),ipTasks+' / '+wipLimit,ipTasks+' items',wipColor);
+
+  /* Gauge 3: Completion Velocity */
+  var velPct=totalTasks>0?Math.round(doneTasks/totalTasks*100):0;
+  var velColor=velPct>=50?'#22c55e':velPct>=25?'#eab308':'#ef4444';
+  createGauge('sm-velocity-gauge',velPct,100,doneTasks+' / '+totalTasks+' tasks',velPct+'%',velColor);
+
+  /* Workload by Team Member */
+  var avgTasksPerMember=members.length>0?totalTasks/members.length:0;
+  var wLabels=[],wData=[],wColors=[];
+  for(var wi=0;wi<members.length;wi++){
+    wLabels.push(members[wi]);
+    var cnt2=memberMap[members[wi]].total;
+    wData.push(cnt2);
+    wColors.push(cnt2>avgTasksPerMember*1.5?'#ef4444':cnt2>avgTasksPerMember*1.2?'#eab308':'#22c55e');
+  }
+  chartInstances['sm-workload']=new Chart(document.getElementById('sm-workload-chart'),{type:'bar',data:{labels:wLabels,datasets:[{label:'Tasks',data:wData,backgroundColor:wColors,borderRadius:5,barThickness:22}]},options:{indexAxis:'y',scales:{x:{grid:{color:'#1e293b'}},y:{grid:{display:false}}},plugins:{legend:{display:false},annotation:false}}});
+
+  /* Remaining Hours by Team Member */
+  var avgRemainingPerMember=0;
+  for(var rm=0;rm<members.length;rm++)avgRemainingPerMember+=memberMap[members[rm]].remaining;
+  avgRemainingPerMember=members.length>0?avgRemainingPerMember/members.length:0;
+  var rLabels=[],rData=[],rColors=[];
+  for(var ri=0;ri<members.length;ri++){
+    rLabels.push(members[ri]);
+    var rem=memberMap[members[ri]].remaining;
+    rData.push(rem);
+    rColors.push(rem>avgRemainingPerMember*1.5?'#ef4444':'#f97316');
+  }
+  chartInstances['sm-remaining']=new Chart(document.getElementById('sm-remaining-chart'),{type:'bar',data:{labels:rLabels,datasets:[{label:'Hours',data:rData,backgroundColor:rColors,borderRadius:5,barThickness:22}]},options:{indexAxis:'y',scales:{x:{grid:{color:'#1e293b'}},y:{grid:{display:false}}},plugins:{legend:{display:false}}}});
+
+  /* State Flow by Member — sorted by completion % descending */
+  var membersSorted=members.slice().sort(function(a,b){
+    var pa=memberMap[a].total>0?memberMap[a].done/memberMap[a].total:0;
+    var pb=memberMap[b].total>0?memberMap[b].done/memberMap[b].total:0;
+    return pb-pa;
+  });
+  var sLabels=[],sDone=[],sIP=[],sTD=[];
+  for(var si3=0;si3<membersSorted.length;si3++){
+    sLabels.push(membersSorted[si3]);
+    var sm=memberMap[membersSorted[si3]];
+    sDone.push(sm.done);sIP.push(sm.ip);sTD.push(sm.todo);
+  }
+  chartInstances['sm-state']=new Chart(document.getElementById('sm-state-chart'),{type:'bar',data:{labels:sLabels,datasets:[
+    {label:'Done',data:sDone,backgroundColor:'#22c55e',borderRadius:2},
+    {label:'In Progress',data:sIP,backgroundColor:'#eab308',borderRadius:2},
+    {label:'To Do',data:sTD,backgroundColor:'#ef4444',borderRadius:2}
+  ]},options:{indexAxis:'y',scales:{x:{stacked:true,grid:{color:'#1e293b'}},y:{stacked:true,grid:{display:false}}},plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true,pointStyle:'circle'}}}}});
+
+  /* At-Risk Work Items */
+  var atRiskBody=document.getElementById('sm-atrisk-body');
+  atRiskBody.innerHTML='';
+  var atRiskItems=[];
+  for(var ar=0;ar<allTasksFlat.length;ar++){
+    var art=allTasksFlat[ar].task;
+    if(art.state.toLowerCase()==='in progress'&&art.remaining!=null&&art.remaining>=6){
+      atRiskItems.push({title:art.title,assignedTo:art.assignedTo,remaining:art.remaining,pbi:allTasksFlat[ar].pbiShort,phase:phaseLabels[art.phase]||'Other'});
+    }
+  }
+  if(atRiskItems.length===0){
+    atRiskBody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--green);padding:20px;font-weight:600">No at-risk items detected</td></tr>';
+  } else {
+    for(var ari=0;ari<atRiskItems.length;ari++){
+      var a=atRiskItems[ari];
+      atRiskBody.innerHTML+='<tr style="background:rgba(234,179,8,0.06)"><td>'+a.title+'</td><td>'+a.assignedTo+'</td><td style="color:var(--orange);font-weight:700">'+a.remaining+'h</td><td style="font-size:0.72rem;color:var(--dim)">'+a.pbi+'</td><td>'+a.phase+'</td></tr>';
+    }
+  }
+
+  /* Phase Spread by Member */
+  var pLabels=[],pDes=[],pDev=[],pTP=[],pTN=[],pOth=[];
+  for(var pi2=0;pi2<members.length;pi2++){
+    pLabels.push(members[pi2]);
+    var pm=memberMap[members[pi2]];
+    pDes.push(pm.design);pDev.push(pm.dev);pTP.push(pm.testP);pTN.push(pm.testN);pOth.push(pm.other);
+  }
+  chartInstances['sm-phase']=new Chart(document.getElementById('sm-phase-chart'),{type:'bar',data:{labels:pLabels,datasets:[
+    {label:'Design',data:pDes,backgroundColor:'#3b82f6',borderRadius:2},
+    {label:'Dev/UT',data:pDev,backgroundColor:'#8b5cf6',borderRadius:2},
+    {label:'Test+',data:pTP,backgroundColor:'#22c55e',borderRadius:2},
+    {label:'Test\u2212',data:pTN,backgroundColor:'#ef4444',borderRadius:2},
+    {label:'Other',data:pOth,backgroundColor:'#475569',borderRadius:2}
+  ]},options:{indexAxis:'y',scales:{x:{stacked:true,grid:{color:'#1e293b'}},y:{stacked:true,grid:{display:false}}},plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true,pointStyle:'circle'}}}}});
+
+  /* Task Classification Pie */
+  var phaseTotals={design:0,dev:0,testP:0,testN:0,other:0};
+  for(var pc2=0;pc2<allTasksFlat.length;pc2++){
+    var ph=allTasksFlat[pc2].task.phase;
+    if(phaseTotals[ph]!==undefined)phaseTotals[ph]++;else phaseTotals.other++;
+  }
+  chartInstances['sm-class-pie']=new Chart(document.getElementById('sm-class-pie'),{type:'doughnut',data:{
+    labels:['Design','Dev/UT','Test+','Test\u2212','Other'],
+    datasets:[{data:[phaseTotals.design,phaseTotals.dev,phaseTotals.testP,phaseTotals.testN,phaseTotals.other],
+    backgroundColor:['#3b82f6','#8b5cf6','#22c55e','#ef4444','#475569'],borderWidth:0,borderRadius:4}]
+  },options:{cutout:'50%',plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true,pointStyle:'circle'}}}}});
+
+  /* ================================================================
+     BURNDOWN, VELOCITY & TASK EXECUTION REPORT (SM Tab)
+     ================================================================ */
+
+  /* --- Sprint Burndown Line Chart --- */
+  /* Group closed tasks by date */
+  var closedByDate={};
+  for(var bd=0;bd<allTasksFlat.length;bd++){
+    var bdt=allTasksFlat[bd].task;
+    if(bdt.closedDate){
+      /* Parse DD/MM/YYYY or YYYY-MM-DD format */
+      var dateStr=String(bdt.closedDate).split(' ')[0];
+      var dParts=dateStr.indexOf('/')>=0?dateStr.split('/'):dateStr.split('-');
+      var normDate;
+      if(dParts[0].length===4)normDate=dParts[0]+'-'+dParts[1]+'-'+dParts[2]; /* YYYY-MM-DD */
+      else normDate=dParts[2]+'-'+dParts[1]+'-'+dParts[0]; /* DD/MM/YYYY → YYYY-MM-DD */
+      closedByDate[normDate]=(closedByDate[normDate]||0)+1;
+    }
+  }
+  var burnDates=Object.keys(closedByDate).sort();
+  var burnLabels=['Start'];
+  var burnActual=[totalTasks];
+  var remaining=totalTasks;
+  for(var bl=0;bl<burnDates.length;bl++){
+    remaining-=closedByDate[burnDates[bl]];
+    /* Format date label as DD Mon */
+    var dp=burnDates[bl].split('-');
+    var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    burnLabels.push(parseInt(dp[2])+' '+months[parseInt(dp[1])-1]);
+    burnActual.push(remaining);
+  }
+  if(burnDates.length>0){
+    burnLabels.push('End');
+    burnActual.push(remaining);
+  }
+  /* Ideal burndown line from total to 0 */
+  var burnIdeal=[];
+  for(var bi2=0;bi2<burnLabels.length;bi2++){
+    burnIdeal.push(Math.round(totalTasks*(1-bi2/(burnLabels.length-1))));
+  }
+  chartInstances['sm-burndown-line']=new Chart(document.getElementById('sm-burndown-line'),{type:'line',data:{labels:burnLabels,datasets:[
+    {label:'Ideal',data:burnIdeal,borderColor:'#475569',borderDash:[6,4],backgroundColor:'transparent',pointRadius:3,pointBackgroundColor:'#475569',tension:0},
+    {label:'Actual',data:burnActual,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.1)',fill:true,pointRadius:5,pointBackgroundColor:'#3b82f6',tension:0.2}
+  ]},options:{scales:{y:{min:0,grid:{color:'#1e293b'},title:{display:true,text:'Tasks Remaining',color:'#94a3b8'}},x:{grid:{display:false}}},plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true,pointStyle:'circle'}}}}});
+
+  /* --- Velocity Charts (sprint-over-sprint from ALL PBIs) --- */
+  var velSprints=allSprints.slice().sort();
+  var velLabels=[],velTasksPlanned=[],velTasksDone=[],velEffortPlanned=[],velEffortDone=[];
+  for(var vs2=0;vs2<velSprints.length;vs2++){
+    var vc=sprintCalendar[velSprints[vs2]];
+    velLabels.push(velSprints[vs2]+(vc?' ('+vc.workDays+'d)':''));
+    var vPlanned=0,vDone=0,vEff=0,vEffDone=0;
+    for(var vp=0;vp<pbis.length;vp++){
+      if(pbis[vp].sprint!==velSprints[vs2])continue;
+      vEff+=(pbis[vp].effort||0);
+      /* Count effort as "done" only if ALL tasks in that PBI are done */
+      var pbiAllDone=pbis[vp].tasks.length>0;
+      for(var vt2=0;vt2<pbis[vp].tasks.length;vt2++){
+        vPlanned++;
+        if(pbis[vp].tasks[vt2].score===100)vDone++;
+        else pbiAllDone=false;
+      }
+      if(pbiAllDone&&pbis[vp].effort)vEffDone+=pbis[vp].effort;
+    }
+    velTasksPlanned.push(vPlanned);
+    velTasksDone.push(vDone);
+    velEffortPlanned.push(vEff);
+    velEffortDone.push(vEffDone);
+  }
+  chartInstances['sm-velocity-bar']=new Chart(document.getElementById('sm-velocity-bar'),{type:'bar',data:{labels:velLabels,datasets:[
+    {label:'Planned',data:velTasksPlanned,backgroundColor:'#334155',borderRadius:5,barPercentage:0.8},
+    {label:'Done',data:velTasksDone,backgroundColor:'#22c55e',borderRadius:5,barPercentage:0.8}
+  ]},options:{scales:{y:{grid:{color:'#1e293b'},title:{display:true,text:'Tasks',color:'#94a3b8'}},x:{grid:{display:false}}},plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true,pointStyle:'circle'}}}}});
+
+  chartInstances['sm-velocity-effort']=new Chart(document.getElementById('sm-velocity-effort'),{type:'bar',data:{labels:velLabels,datasets:[
+    {label:'Planned (Days)',data:velEffortPlanned,backgroundColor:'#334155',borderRadius:5,barPercentage:0.8},
+    {label:'Done (Days)',data:velEffortDone,backgroundColor:'#8b5cf6',borderRadius:5,barPercentage:0.8}
+  ]},options:{scales:{y:{grid:{color:'#1e293b'},title:{display:true,text:'Days',color:'#94a3b8'}},x:{grid:{display:false}}},plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true,pointStyle:'circle'}}}}});
+
+  /* --- Task-Level Execution Report --- */
+  var taskReport=document.getElementById('sm-task-report-body');taskReport.innerHTML='';
+  /* Sort: In Progress first, then To Do, then Done */
+  var sortedTasks=allTasksFlat.slice().sort(function(a,b){
+    var order={'in progress':0,'committed':1,'to do':2,'done':3};
+    var sa=order[a.task.state.toLowerCase()]!==undefined?order[a.task.state.toLowerCase()]:2;
+    var sb=order[b.task.state.toLowerCase()]!==undefined?order[b.task.state.toLowerCase()]:2;
+    return sa-sb;
+  });
+  for(var tr=0;tr<sortedTasks.length;tr++){
+    var trt=sortedTasks[tr].task;
+    var stColor=trt.score===100?'var(--green)':trt.score===50?'var(--yellow)':'var(--red)';
+    var remStr2=trt.remaining!=null?trt.remaining+'h':'<span class="na">\u2014</span>';
+    var phLbl=phaseLabels[trt.phase]||'Other';
+    var phCls=phaseCss[trt.phase]||'other';
+    /* Closed date */
+    var closedStr='<span class="na">\u2014</span>';
+    if(trt.closedDate){
+      var cd=String(trt.closedDate).split(' ');
+      closedStr='<span style="color:var(--green)">'+cd[0]+'</span>';
+    }
+    /* Lead/cycle time — only if we have closedDate */
+    var timeStr='<span class="na">\u2014</span>';
+    if(trt.closedDate&&trt.activatedDate){
+      timeStr='<span style="color:var(--accent)">Has data</span>';
+    } else if(trt.closedDate){
+      timeStr='<span style="font-size:0.65rem;color:var(--dim)">No Activated Date</span>';
+    }
+    taskReport.innerHTML+='<tr><td style="font-size:0.72rem">'+trt.title+'</td><td style="font-size:0.72rem">'+(trt.assignedTo||'\u2014')+'</td><td style="color:'+stColor+'">'+trt.state+'</td><td style="color:var(--orange)">'+remStr2+'</td><td><span class="phase-tag '+phCls+'">'+phLbl+'</span></td><td>'+closedStr+'</td><td>'+timeStr+'</td></tr>';
+  }
+
+  /* ================================================================
+     TAB 3: PRODUCT OWNER VIEW
+     ================================================================ */
+  /* KPIs */
+  var pbisDone=0,totalEffort=0,effortCount=0,businessItems=0,fullCoveragePBIs=0;
+  for(var pk=0;pk<data.length;pk++){
+    var dd=data[pk];
+    /* PBI completion: all child tasks Done */
+    var allDone2=dd.taskCount>0;
+    for(var ct=0;ct<dd.tasks.length;ct++){if(dd.tasks[ct].score!==100){allDone2=false;break;}}
+    if(allDone2&&dd.taskCount>0)pbisDone++;
+    if(dd.effort!=null){totalEffort+=dd.effort;effortCount++;}
+    /* Value area from PBI row */
+    if(dd.valueArea==='Business')businessItems++;
+    /* Scope coverage: has tasks in Design + Dev + Test (test+ or test-) */
+    var pc3=dd.phaseCounts;
+    if(pc3.design>0&&pc3.dev>0&&(pc3.testP>0||pc3.testN>0))fullCoveragePBIs++;
+  }
+  var avgEffort=effortCount>0?Math.round(totalEffort/effortCount*10)/10:0;
+  var pbiCompRate=data.length>0?Math.round(pbisDone/data.length*100):0;
+  var scopeCovPct=data.length>0?Math.round(fullCoveragePBIs/data.length*100):0;
+
+  var poKpiRow=document.getElementById('po-kpi-row');poKpiRow.innerHTML='';
+  var poKpis=[
+    {value:pbiCompRate+'%',label:'PBI Completion Rate',cls:pbiCompRate>=80?'green':pbiCompRate>=50?'yellow':'red'},
+    {value:avgEffort+' SP',label:'Avg Effort per PBI',cls:'purple'},
+    {value:String(businessItems),label:'Business Value Items',cls:'blue'},
+    {value:scopeCovPct+'%',label:'Scope Coverage',cls:scopeCovPct>=80?'green':scopeCovPct>=50?'yellow':'red'}
+  ];
+  for(var pki=0;pki<poKpis.length;pki++){poKpiRow.innerHTML+='<div class="kpi '+poKpis[pki].cls+'"><div class="value">'+poKpis[pki].value+'</div><div class="label">'+poKpis[pki].label+'</div></div>';}
+
+  /* PBI Completion Waterfall */
+  var wfLabels=[],wfDone=[],wfIP=[],wfTD=[];
+  for(var wf=0;wf<data.length;wf++){
+    var dd2=data[wf];
+    var dCnt=0,iCnt=0,tCnt=0;
+    for(var wt=0;wt<dd2.tasks.length;wt++){
+      if(dd2.tasks[wt].score===100)dCnt++;else if(dd2.tasks[wt].score===50)iCnt++;else tCnt++;
+    }
+    var total=dd2.taskCount||1;
+    wfLabels.push(dd2.short+' ('+dd2.taskCount+')');
+    wfDone.push(Math.round(dCnt/total*100));
+    wfIP.push(Math.round(iCnt/total*100));
+    wfTD.push(Math.round(tCnt/total*100));
+  }
+  chartInstances['po-waterfall']=new Chart(document.getElementById('po-waterfall-chart'),{type:'bar',data:{labels:wfLabels,datasets:[
+    {label:'Done %',data:wfDone,backgroundColor:'#22c55e',borderRadius:2},
+    {label:'In Progress %',data:wfIP,backgroundColor:'#eab308',borderRadius:2},
+    {label:'To Do %',data:wfTD,backgroundColor:'#ef4444',borderRadius:2}
+  ]},options:{indexAxis:'y',scales:{x:{stacked:true,max:100,grid:{color:'#1e293b'},ticks:{callback:function(v){return v+'%';}}},y:{stacked:true,grid:{display:false}}},plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true,pointStyle:'circle'}}}}});
+
+  /* PBI Health Matrix */
+  var poBody=document.getElementById('po-health-body');poBody.innerHTML='';
+  for(var ph2=0;ph2<data.length;ph2++){
+    var dd3=data[ph2];
+    var dCnt2=0,iCnt2=0,tCnt2=0,remHrs=0;
+    for(var ht=0;ht<dd3.tasks.length;ht++){
+      if(dd3.tasks[ht].score===100)dCnt2++;else if(dd3.tasks[ht].score===50)iCnt2++;else tCnt2++;
+      if(dd3.tasks[ht].remaining!=null)remHrs+=dd3.tasks[ht].remaining;
+    }
+    var pc4=dd3.phaseCounts;
+    var coverageHtml='';
+    var phaseList=[{key:'design',label:'Design'},{key:'dev',label:'Dev'},{key:'testP',label:'Test+'},{key:'testN',label:'Test\u2212'}];
+    for(var pl=0;pl<phaseList.length;pl++){
+      var has=pc4[phaseList[pl].key]>0;
+      coverageHtml+='<span class="phase-tag '+(has?'present':'missing')+'">'+phaseList[pl].label+(has?' \u2713':' \u2717')+'</span>';
+    }
+    var sciVal=dd3.sci;
+    var sciPct2=sciVal!==null?sciVal:0;
+    var barCls2=sciVal===null?'zero':sciVal>=60?'high':sciVal>=30?'mid':'low';
+    var stCls2,stLbl2;
+    if(sciVal===null){stCls2='no-data';stLbl2='No Data';}else if(sciVal>=60){stCls2='on-track';stLbl2='On Track';}else if(sciVal>=30){stCls2='at-risk';stLbl2='At Risk';}else{stCls2='behind';stLbl2='Behind';}
+    poBody.innerHTML+='<tr><td style="font-weight:500" title="'+dd3.pbi.replace(/"/g,'&quot;')+'">'+dd3.short+'</td><td style="text-align:center">'+(dd3.effort!=null?dd3.effort:'<span class="na">\u2014</span>')+'</td><td style="text-align:center">'+dd3.taskCount+'</td><td style="text-align:center;color:var(--green)">'+dCnt2+'</td><td style="text-align:center;color:var(--yellow)">'+iCnt2+'</td><td style="text-align:center;color:var(--red)">'+tCnt2+'</td><td style="text-align:center;color:var(--orange)">'+remHrs.toFixed(1)+'h</td><td>'+coverageHtml+'</td><td><div class="bar-bg"><div class="bar-fill '+barCls2+'" style="width:'+Math.max(sciPct2,0)+'%">'+(sciVal!==null?Math.round(sciVal)+'%':'')+'</div>'+(sciVal===null?'<span class="bar-label-zero">\u2014</span>':'')+'</div></td><td><span class="badge '+stCls2+'">'+stLbl2+'</span></td></tr>';
+  }
+
+  /* Tag Frequency Chart */
+  var tagCounts={};
+  for(var tg=0;tg<allTasksFlat.length;tg++){
+    var tags=(allTasksFlat[tg].task.tags||'');
+    if(!tags)continue;
+    var tagArr=tags.split(';');
+    for(var ta=0;ta<tagArr.length;ta++){
+      var tag=tagArr[ta].trim();
+      if(tag)tagCounts[tag]=(tagCounts[tag]||0)+1;
+    }
+  }
+  /* Also count PBI tags */
+  for(var tgp=0;tgp<data.length;tgp++){
+    var ptags=(data[tgp].tags||'');
+    if(!ptags)continue;
+    var ptagArr=ptags.split(';');
+    for(var pta=0;pta<ptagArr.length;pta++){
+      var ptag=ptagArr[pta].trim();
+      if(ptag)tagCounts[ptag]=(tagCounts[ptag]||0)+1;
+    }
+  }
+  var tagNames=Object.keys(tagCounts).sort(function(a,b){return tagCounts[b]-tagCounts[a];});
+  var tagData=[];var tagColors2=['#3b82f6','#8b5cf6','#22c55e','#ef4444','#eab308','#f97316','#06b6d4','#ec4899'];
+  for(var tn=0;tn<tagNames.length;tn++)tagData.push(tagCounts[tagNames[tn]]);
+  var tgColors=[];for(var tc2=0;tc2<tagNames.length;tc2++)tgColors.push(tagColors2[tc2%tagColors2.length]);
+  chartInstances['po-tag']=new Chart(document.getElementById('po-tag-chart'),{type:'bar',data:{labels:tagNames,datasets:[{label:'Count',data:tagData,backgroundColor:tgColors,borderRadius:5,barThickness:22}]},options:{indexAxis:'y',scales:{x:{grid:{color:'#1e293b'}},y:{grid:{display:false}}},plugins:{legend:{display:false}}}});
+
+  /* Value Area Breakdown */
+  var vaBusinessCount=0,vaOtherCount=0;
+  for(var va=0;va<parsedAllItems.length;va++){
+    if(parsedAllItems[va].valueArea==='Business')vaBusinessCount++;else vaOtherCount++;
+  }
+  chartInstances['po-value']=new Chart(document.getElementById('po-value-chart'),{type:'doughnut',data:{
+    labels:['Business','Unclassified'],
+    datasets:[{data:[vaBusinessCount,vaOtherCount],backgroundColor:['#3b82f6','#475569'],borderWidth:0,borderRadius:4}]
+  },options:{cutout:'55%',plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true,pointStyle:'circle'}}}},
+  plugins:[{id:'vaCenter',afterDraw:function(chart){var ctx=chart.ctx,w=chart.width,h=chart.height;ctx.save();ctx.font='bold 1.4rem Segoe UI,system-ui';ctx.fillStyle='#f1f5f9';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(vaBusinessCount,w/2,h/2+2);ctx.font='0.65rem Segoe UI,system-ui';ctx.fillStyle='#94a3b8';ctx.textBaseline='top';ctx.fillText('Business',w/2,h/2+6);ctx.restore();}}]});
+
+  /* ================================================================
+     TAB 4: RTE VIEW
+     ================================================================ */
+
+  /* Delivery Confidence Gauges */
+  /* Gauge 1: Overall Sprint Health */
+  var donePct=totalTasks>0?doneTasks/totalTasks:0;
+  var ipPct=totalTasks>0?ipTasks/totalTasks:0;
+  var atRiskRatio=totalTasks>0?atRiskItems.length/totalTasks:0;
+  var healthScore=Math.round((donePct*0.4+ipPct*0.3+(1-atRiskRatio)*0.3)*100);
+  var healthColor=healthScore>=60?'#22c55e':healthScore>=30?'#eab308':'#ef4444';
+  createGauge('rte-health-gauge',healthScore,100,'Sprint Health',healthScore+'%',healthColor);
+
+  /* Gauge 2: Team Balance Score */
+  var taskCounts=[];
+  for(var tb=0;tb<members.length;tb++)taskCounts.push(memberMap[members[tb]].total);
+  var mean=0;for(var tm=0;tm<taskCounts.length;tm++)mean+=taskCounts[tm];
+  mean=taskCounts.length>0?mean/taskCounts.length:0;
+  var variance=0;for(var tv=0;tv<taskCounts.length;tv++)variance+=Math.pow(taskCounts[tv]-mean,2);
+  var stdDev=taskCounts.length>0?Math.sqrt(variance/taskCounts.length):0;
+  stdDev=Math.round(stdDev*10)/10;
+  var balanceColor=stdDev<=2?'#22c55e':stdDev<=4?'#eab308':'#ef4444';
+  createGauge('rte-balance-gauge',Math.max(0,100-stdDev*10),100,'StdDev: '+stdDev,stdDev<=2?'Balanced':stdDev<=4?'Moderate':'Imbalanced',balanceColor);
+
+  /* Gauge 3: Phase Coverage Score */
+  var fullPhasePBIs=0;
+  for(var fp2=0;fp2<data.length;fp2++){
+    var pc5=data[fp2].phaseCounts;
+    if(pc5.design>0&&pc5.dev>0&&pc5.testP>0&&pc5.testN>0)fullPhasePBIs++;
+  }
+  var coveragePct=data.length>0?Math.round(fullPhasePBIs/data.length*100):0;
+  var covColor=coveragePct>=60?'#22c55e':coveragePct>=30?'#eab308':'#ef4444';
+  createGauge('rte-coverage-gauge',coveragePct,100,'All 4 Phases',coveragePct+'%',covColor);
+
+  /* Team Performance Heatmap */
+  var heatBody=document.getElementById('rte-heatmap-body');heatBody.innerHTML='';
+  /* Compute ranges for heatmap coloring */
+  var ranges={total:{min:Infinity,max:-Infinity},donePct:{min:Infinity,max:-Infinity},remaining:{min:Infinity,max:-Infinity},wip:{min:Infinity,max:-Infinity},diversity:{min:Infinity,max:-Infinity}};
+  for(var hr=0;hr<members.length;hr++){
+    var hm=memberMap[members[hr]];
+    var dp2=hm.total>0?Math.round(hm.done/hm.total*100):0;
+    var div2=0;
+    if(hm.design>0)div2++;if(hm.dev>0)div2++;if(hm.testP>0)div2++;if(hm.testN>0)div2++;if(hm.other>0)div2++;
+    ranges.total.min=Math.min(ranges.total.min,hm.total);ranges.total.max=Math.max(ranges.total.max,hm.total);
+    ranges.donePct.min=Math.min(ranges.donePct.min,dp2);ranges.donePct.max=Math.max(ranges.donePct.max,dp2);
+    ranges.remaining.min=Math.min(ranges.remaining.min,hm.remaining);ranges.remaining.max=Math.max(ranges.remaining.max,hm.remaining);
+    ranges.wip.min=Math.min(ranges.wip.min,hm.ip);ranges.wip.max=Math.max(ranges.wip.max,hm.ip);
+    ranges.diversity.min=Math.min(ranges.diversity.min,div2);ranges.diversity.max=Math.max(ranges.diversity.max,div2);
+  }
+
+  for(var hri=0;hri<members.length;hri++){
+    var hm2=memberMap[members[hri]];
+    var dp3=hm2.total>0?Math.round(hm2.done/hm2.total*100):0;
+    var div3=0;
+    if(hm2.design>0)div3++;if(hm2.dev>0)div3++;if(hm2.testP>0)div3++;if(hm2.testN>0)div3++;if(hm2.other>0)div3++;
+    heatBody.innerHTML+='<tr><td style="font-weight:600">'+members[hri]+'</td>'+
+      '<td class="heatmap-cell" style="background:'+heatColor(hm2.total,ranges.total.min,ranges.total.max,false)+'">'+hm2.total+'</td>'+
+      '<td class="heatmap-cell" style="background:'+heatColor(dp3,ranges.donePct.min,ranges.donePct.max,false)+'">'+dp3+'%</td>'+
+      '<td class="heatmap-cell" style="background:'+heatColor(hm2.remaining,ranges.remaining.min,ranges.remaining.max,true)+'">'+hm2.remaining.toFixed(1)+'h</td>'+
+      '<td class="heatmap-cell" style="background:'+heatColor(hm2.ip,ranges.wip.min,ranges.wip.max,true)+'">'+hm2.ip+'</td>'+
+      '<td class="heatmap-cell" style="background:'+heatColor(div3,ranges.diversity.min,ranges.diversity.max,false)+'">'+div3+'</td></tr>';
+  }
+
+  /* Cross-Member Dependency Matrix */
+  var matrixHead=document.getElementById('rte-matrix-head');
+  var matrixBody=document.getElementById('rte-matrix-body');
+  matrixHead.innerHTML='';matrixBody.innerHTML='';
+
+  var headRow='<tr><th>PBI</th>';
+  for(var mh=0;mh<members.length;mh++){
+    var nameParts=members[mh].split(' ');
+    var initials=nameParts[0].charAt(0)+nameParts[nameParts.length-1].charAt(0);
+    headRow+='<th title="'+members[mh]+'" style="text-align:center;font-size:0.6rem">'+initials+'</th>';
+  }
+  headRow+='<th style="text-align:center">Members</th></tr>';
+  matrixHead.innerHTML=headRow;
+
+  for(var mb=0;mb<data.length;mb++){
+    var dd4=data[mb];
+    var memberCounts={};
+    var uniqueMembers=0;
+    for(var mt3=0;mt3<dd4.tasks.length;mt3++){
+      var who2=(dd4.tasks[mt3].assignedTo||'').trim();
+      if(who2){
+        memberCounts[who2]=(memberCounts[who2]||0)+1;
+      }
+    }
+    uniqueMembers=Object.keys(memberCounts).length;
+    var row='<tr><td style="font-weight:500">'+dd4.short+'</td>';
+    for(var mc=0;mc<members.length;mc++){
+      var cnt3=memberCounts[members[mc]]||0;
+      var bg=cnt3===0?'transparent':cnt3===1?'rgba(59,130,246,0.15)':cnt3===2?'rgba(59,130,246,0.3)':'rgba(59,130,246,0.5)';
+      row+='<td style="text-align:center;background:'+bg+';font-size:0.75rem;font-weight:'+(cnt3>0?'600':'400')+';color:'+(cnt3>0?'var(--accent-light)':'var(--dim)')+'">'+(cnt3>0?cnt3:'\u00B7')+'</td>';
+    }
+    var memberBadge=uniqueMembers<=1?'<span class="badge behind">'+uniqueMembers+'</span>':'<span class="badge '+(uniqueMembers>=3?'on-track':'at-risk')+'">'+uniqueMembers+'</span>';
+    row+='<td style="text-align:center">'+memberBadge+'</td></tr>';
+    matrixBody.innerHTML+=row;
+  }
+
+  /* ================================================================
+     PI47 AGGREGATED VIEW (All Sprints)
+     ================================================================ */
+  /* Build per-sprint stats from ALL PBIs (unfiltered) */
+  var piSprints=allSprints.slice().sort();
+  var piStats={};
+  for(var ps=0;ps<piSprints.length;ps++){piStats[piSprints[ps]]={pbis:0,tasks:0,done:0,ip:0,todo:0,remaining:0,sciSum:0,sciCount:0};}
+  for(var pp=0;pp<pbis.length;pp++){
+    var pb=pbis[pp];
+    var spr2=pb.sprint;
+    if(!piStats[spr2])continue;
+    var st2=piStats[spr2];
+    st2.pbis++;
+    var sci2=calcSCI(pb);
+    if(sci2!==null){st2.sciSum+=sci2;st2.sciCount++;}
+    for(var pt=0;pt<pb.tasks.length;pt++){
+      var tk2=pb.tasks[pt];
+      st2.tasks++;
+      if(tk2.score===100)st2.done++;
+      else if(tk2.score===50)st2.ip++;
+      else st2.todo++;
+      if(tk2.remaining!=null)st2.remaining+=tk2.remaining;
+    }
+  }
+
+  /* PI KPIs */
+  var piKpiRow=document.getElementById('rte-pi-kpis');piKpiRow.innerHTML='';
+  var piTotalPBIs=0,piTotalTasks=0,piTotalDone=0,piTotalIP=0,piTotalTD=0,piTotalRem=0;
+  for(var pk2=0;pk2<piSprints.length;pk2++){
+    var s2=piStats[piSprints[pk2]];
+    piTotalPBIs+=s2.pbis;piTotalTasks+=s2.tasks;piTotalDone+=s2.done;piTotalIP+=s2.ip;piTotalTD+=s2.todo;piTotalRem+=s2.remaining;
+  }
+  var piDonePct=piTotalTasks>0?Math.round(piTotalDone/piTotalTasks*100):0;
+  var piKpis=[
+    {value:'PI47',label:'Program Increment',cls:'blue'},
+    {value:piSprints.length+'',label:'Sprints ('+piSprints[0]+' \u2013 '+piSprints[piSprints.length-1]+')',cls:'blue'},
+    {value:piTotalPBIs+'',label:'Total PBIs',cls:'purple'},
+    {value:piTotalTasks+'',label:'Total Tasks',cls:'blue'},
+    {value:piTotalDone+'',label:'PI Tasks Done',cls:'green'},
+    {value:piDonePct+'%',label:'PI Completion',cls:piDonePct>=80?'green':piDonePct>=50?'yellow':'red'},
+    {value:piTotalRem.toFixed(1)+'h',label:'PI Remaining Work',cls:'orange'}
+  ];
+  for(var pk3=0;pk3<piKpis.length;pk3++){piKpiRow.innerHTML+='<div class="kpi '+piKpis[pk3].cls+'"><div class="value">'+piKpis[pk3].value+'</div><div class="label">'+piKpis[pk3].label+'</div></div>';}
+
+  /* Sprint-over-Sprint Progress chart (stacked bar) */
+  var piLabels=[],piDoneD=[],piIPD=[],piTDD=[];
+  for(var pl2=0;pl2<piSprints.length;pl2++){
+    piLabels.push('Sprint '+piSprints[pl2]);
+    var ps2=piStats[piSprints[pl2]];
+    piDoneD.push(ps2.done);piIPD.push(ps2.ip);piTDD.push(ps2.todo);
+  }
+  chartInstances['rte-pi-sprint']=new Chart(document.getElementById('rte-pi-sprint-chart'),{type:'bar',data:{labels:piLabels,datasets:[
+    {label:'Done',data:piDoneD,backgroundColor:'#22c55e',borderRadius:3},
+    {label:'In Progress',data:piIPD,backgroundColor:'#eab308',borderRadius:3},
+    {label:'To Do',data:piTDD,backgroundColor:'#ef4444',borderRadius:3}
+  ]},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'#1e293b'}}},plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true,pointStyle:'circle'}}}}});
+
+  /* PI Velocity by Sprint (done tasks per sprint) */
+  var piVelData=[];
+  for(var pv=0;pv<piSprints.length;pv++)piVelData.push(piStats[piSprints[pv]].done);
+  chartInstances['rte-pi-velocity']=new Chart(document.getElementById('rte-pi-velocity-chart'),{type:'bar',data:{labels:piLabels,datasets:[
+    {label:'Tasks Completed',data:piVelData,backgroundColor:'#22c55e',borderRadius:5,barPercentage:0.6}
+  ]},options:{scales:{x:{grid:{display:false}},y:{grid:{color:'#1e293b'}}},plugins:{legend:{display:false}}}});
+
+  /* PI Task State Trend (line chart showing cumulative done) */
+  var piCumDone=[],piCumTotal=[],cumD=0,cumT=0;
+  for(var pc8=0;pc8<piSprints.length;pc8++){
+    cumD+=piStats[piSprints[pc8]].done;cumT+=piStats[piSprints[pc8]].tasks;
+    piCumDone.push(cumD);piCumTotal.push(cumT);
+  }
+  chartInstances['rte-pi-state']=new Chart(document.getElementById('rte-pi-state-chart'),{type:'line',data:{labels:piLabels,datasets:[
+    {label:'Cumulative Done',data:piCumDone,borderColor:'#22c55e',backgroundColor:'rgba(34,197,94,0.1)',fill:true,tension:0.3,pointRadius:5,pointBackgroundColor:'#22c55e'},
+    {label:'Cumulative Total',data:piCumTotal,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.1)',fill:true,tension:0.3,pointRadius:5,pointBackgroundColor:'#3b82f6'}
+  ]},options:{scales:{x:{grid:{display:false}},y:{grid:{color:'#1e293b'}}},plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true,pointStyle:'circle'}}}}});
+
+  /* PI Table */
+  var piTableBody=document.getElementById('rte-pi-table-body');piTableBody.innerHTML='';
+  var piTableFoot=document.getElementById('rte-pi-table-foot');piTableFoot.innerHTML='';
+  var piTotalWorkDays=0;
+  for(var pt2=0;pt2<piSprints.length;pt2++){
+    var ps3=piStats[piSprints[pt2]];
+    var cal=sprintCalendar[piSprints[pt2]]||{start:'?',end:'?',workDays:'?',holidays:''};
+    var dp4=ps3.tasks>0?Math.round(ps3.done/ps3.tasks*100):0;
+    var avgSci=ps3.sciCount>0?Math.round(ps3.sciSum/ps3.sciCount*10)/10:0;
+    var isActive=piSprints[pt2]===sprintVal;
+    if(typeof cal.workDays==='number')piTotalWorkDays+=cal.workDays;
+    var dateCell=cal.start+' \u2013 '+cal.end;
+    var wdCell=cal.workDays+(cal.holidays?' <span style="font-size:0.6rem;color:var(--orange)" title="'+cal.holidays+'">(-'+(10-cal.workDays)+')</span>':'');
+    piTableBody.innerHTML+='<tr'+(isActive?' style="background:rgba(59,130,246,0.08);font-weight:600"':'')+'><td>Sprint '+piSprints[pt2]+(isActive?' \u25C0':'')+'</td><td style="font-size:0.72rem;white-space:nowrap">'+dateCell+'</td><td style="text-align:center">'+wdCell+'</td><td style="text-align:center">'+ps3.pbis+'</td><td style="text-align:center">'+ps3.tasks+'</td><td style="text-align:center;color:var(--green)">'+ps3.done+'</td><td style="text-align:center;color:var(--yellow)">'+ps3.ip+'</td><td style="text-align:center;color:var(--red)">'+ps3.todo+'</td><td style="text-align:center"><span class="badge '+(dp4>=80?'on-track':dp4>=50?'at-risk':'behind')+'">'+dp4+'%</span></td><td style="text-align:center;color:var(--orange)">'+ps3.remaining.toFixed(1)+'h</td><td style="text-align:center"><span class="badge '+(avgSci>=60?'on-track':avgSci>=30?'at-risk':'behind')+'">'+avgSci+'%</span></td></tr>';
+  }
+  piTableFoot.innerHTML='<tr style="font-weight:700;border-top:2px solid var(--border)"><td>PI47 Total</td><td></td><td style="text-align:center">'+piTotalWorkDays+'d</td><td style="text-align:center">'+piTotalPBIs+'</td><td style="text-align:center">'+piTotalTasks+'</td><td style="text-align:center;color:var(--green)">'+piTotalDone+'</td><td style="text-align:center;color:var(--yellow)">'+piTotalIP+'</td><td style="text-align:center;color:var(--red)">'+piTotalTD+'</td><td style="text-align:center"><span class="badge '+(piDonePct>=80?'on-track':piDonePct>=50?'at-risk':'behind')+'">'+piDonePct+'%</span></td><td style="text-align:center;color:var(--orange)">'+piTotalRem.toFixed(1)+'h</td><td></td></tr>';
+}
+
+/* ================================================================
+   HIGH-QUALITY PDF EXPORT ENGINE
+   ================================================================ */
+function reRenderChartsForPDF(){
+  var keys=Object.keys(chartInstances);
+  for(var i=0;i<keys.length;i++){
+    var ch=chartInstances[keys[i]];
+    if(ch&&ch.canvas){
+      ch.options.devicePixelRatio=3;
+      ch.options.scales=ch.options.scales||{};
+      var scaleKeys=Object.keys(ch.options.scales);
+      for(var s=0;s<scaleKeys.length;s++){
+        var sc=ch.options.scales[scaleKeys[s]];
+        if(sc.grid)sc.grid.color='#e2e8f0';
+        if(sc.ticks)sc.ticks.color='#374151';
+      }
+      if(ch.options.plugins&&ch.options.plugins.legend&&ch.options.plugins.legend.labels){
+        ch.options.plugins.legend.labels.color='#374151';
+      }
+      ch.update('none');
+    }
+  }
+}
+
+function restoreChartsFromPDF(){
+  var keys=Object.keys(chartInstances);
+  for(var i=0;i<keys.length;i++){
+    var ch=chartInstances[keys[i]];
+    if(ch&&ch.canvas){
+      ch.options.devicePixelRatio=window.devicePixelRatio||1;
+      var scaleKeys=Object.keys(ch.options.scales||{});
+      for(var s=0;s<scaleKeys.length;s++){
+        var sc=ch.options.scales[scaleKeys[s]];
+        if(sc.grid)sc.grid.color='#1e293b';
+        if(sc.ticks)sc.ticks.color='#94a3b8';
+      }
+      if(ch.options.plugins&&ch.options.plugins.legend&&ch.options.plugins.legend.labels){
+        ch.options.plugins.legend.labels.color='#94a3b8';
+      }
+      ch.update('none');
+    }
+  }
+}
+
+document.getElementById('pdfExportBtn').addEventListener('click',function(){
+  if(typeof html2canvas==='undefined'||typeof jspdf==='undefined'){
+    alert('PDF libraries still loading. Please wait a moment and try again.');
+    return;
+  }
+  var btn=document.getElementById('pdfExportBtn');
+  btn.disabled=true;btn.textContent='Generating PDF\u2026';
+
+  var panels=document.querySelectorAll('.tab-panel');
+
+  document.body.classList.add('pdf-export-mode');
+  Chart.defaults.color='#374151';
+  reRenderChartsForPDF();
+
+  setTimeout(function(){
+    /* Capture the entire visible .app — current active tab with live charts */
+    var appEl=document.querySelector('.app');
+    var scale=2;
+    var jsPDF=jspdf.jsPDF;
+    var pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    var MARGIN=12;var contentW=297-2*MARGIN;var contentH=210-2*MARGIN;
+
+    html2canvas(appEl,{
+      scale:scale,useCORS:true,allowTaint:true,backgroundColor:'#ffffff',logging:false,
+      width:appEl.scrollWidth,height:appEl.scrollHeight,windowWidth:appEl.scrollWidth
+    }).then(function(canvas){
+      var ratio=contentW/(canvas.width/scale);
+      var scaledH=(canvas.height/scale)*ratio;
+      var totalPages=Math.ceil(scaledH/contentH);
+      for(var p=0;p<totalPages;p++){
+        if(p>0)pdf.addPage();
+        var srcY=p*(contentH/ratio)*scale;
+        var srcH=Math.min((contentH/ratio)*scale,canvas.height-srcY);
+        if(srcH<=0)break;
+        var sl=document.createElement('canvas');sl.width=canvas.width;sl.height=Math.ceil(srcH);
+        sl.getContext('2d').drawImage(canvas,0,srcY,canvas.width,srcH,0,0,canvas.width,srcH);
+        pdf.addImage(sl.toDataURL('image/png',1.0),'PNG',MARGIN,MARGIN,contentW,(srcH/scale)*ratio,undefined,'FAST');
+        pdf.setFontSize(7);pdf.setTextColor(148,163,184);
+        pdf.text('Page '+(p+1)+' / '+totalPages,contentW+MARGIN,contentH+MARGIN+6,{align:'right'});
+        var now=new Date();
+        pdf.text((teamConfig.teamName||'SCI Dashboard')+' \u2014 '+now.toLocaleDateString('en-AU'),MARGIN,contentH+MARGIN+6);
+      }
+    }).then(function(){
+      var fname='SCI-Dashboard';
+      if(teamConfig.teamName)fname=teamConfig.teamName.replace(/[^a-zA-Z0-9]/g,'-')+'-SCI';
+      var dd=new Date();
+      fname+='-'+dd.getFullYear()+('0'+(dd.getMonth()+1)).slice(-2)+('0'+dd.getDate()).slice(-2)+'.pdf';
+      pdf.save(fname);
+
+      /* Restore */
+      document.body.classList.remove('pdf-export-mode');
+      Chart.defaults.color='#94a3b8';
+      restoreChartsFromPDF();
+      var activeTab=document.querySelector('.tab-btn.active');
+      var activeId=activeTab?activeTab.getAttribute('data-tab'):'tab-overview';
+      for(var r=0;r<panels.length;r++){
+        panels[r].classList.remove('active');
+        if(panels[r].id===activeId)panels[r].classList.add('active');
+      }
+      btn.disabled=false;btn.innerHTML='<span class="icon">&#128196;</span> Export PDF (HD)';
+    }).catch(function(err){
+      console.error('PDF export error:',err);
+      document.body.classList.remove('pdf-export-mode');
+      Chart.defaults.color='#94a3b8';
+      restoreChartsFromPDF();
+      var activeTab2=document.querySelector('.tab-btn.active');
+      var activeId2=activeTab2?activeTab2.getAttribute('data-tab'):'tab-overview';
+      for(var r2=0;r2<panels.length;r2++){
+        panels[r2].classList.remove('active');
+        if(panels[r2].id===activeId2)panels[r2].classList.add('active');
+      }
+      btn.disabled=false;btn.innerHTML='<span class="icon">&#128196;</span> Export PDF (HD)';
+      alert('PDF export failed: '+err.message);
+    });
+  },600);
+});
+
+document.getElementById('exportBtn').addEventListener('click',function(){window.print();});
+
+/* ================================================================
+   BEGIN SCI-RISK-ENHANCEMENT: Risk Analysis Tab Init
+   ================================================================ */
+function initRiskAnalysisTab(){
+  var tsEl=document.getElementById('riskAnalysisTimestamp');
+  if(tsEl){
+    var now=new Date();
+    tsEl.textContent=now.toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'})+' '+now.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
+  }
+}
+initRiskAnalysisTab();
+/* END SCI-RISK-ENHANCEMENT */
+
+/* ================================================================
+   INIT
+   ================================================================ */
+applyConfig();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+import figlet from "figlet";
+import gradient from "gradient-string";
+import cliSpinners from "cli-spinners";
+import chalkAnimation from "chalk-animation";
+import logSymbols from "log-symbols";
+import cfonts from "cfonts";
+import {Listr} from "listr2";
+console.log(gradient.rainbow(figlet.textSync("VPS READY", {font: "Standard"})));
+console.log(logSymbols.success, "figlet+gradient OK");
+console.log(logSymbols.success, "cli-spinners loaded:", Object.keys(cliSpinners).length, "spinner styles");
+console.log(logSymbols.success, "chalk-animation modes:", Object.keys(chalkAnimation).filter(k=>typeof chalkAnimation[k]==="function").join(", "));
+console.log(logSymbols.success, "listr2 imported (class):", typeof Listr);
+console.log(logSymbols.success, "cfonts imported (fn):", typeof cfonts.say);

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "agent-1775300130018",
+    "name": "mithla",
+    "type": "admin",
+    "model": "claude-sonnet-4.6-max-thinking",
+    "systemPrompt": "",
+    "temperature": 0.2,
+    "maxTokens": 2000,
+    "status": "active",
+    "createdAt": "2026-04-04T10:55:30.018Z",
+    "updatedAt": "2026-04-04T10:55:30.018Z"
+  }
+]

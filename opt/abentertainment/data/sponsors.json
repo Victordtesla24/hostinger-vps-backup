@@ -1,0 +1,38 @@
+[
+  {
+    "id": "sp-1",
+    "name": "Melbourne Arts Council",
+    "logo": "/images/sponsors/mac.png",
+    "url": "https://www.melbourne.vic.gov.au",
+    "tier": "platinum",
+    "description": "Supporting multicultural arts and community expression across Melbourne.",
+    "createdAt": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": "sp-2",
+    "name": "Victorian Multicultural Commission",
+    "logo": "/images/sponsors/vmc.png",
+    "url": "https://www.multiculturalcommission.vic.gov.au",
+    "tier": "gold",
+    "description": "Championing diversity and inclusion in the arts.",
+    "createdAt": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": "sp-3",
+    "name": "SBS Australia",
+    "logo": "/images/sponsors/sbs.png",
+    "url": "https://www.sbs.com.au",
+    "tier": "gold",
+    "description": "Australia's multicultural broadcaster.",
+    "createdAt": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": "sp-4",
+    "name": "Indian Association of Melbourne",
+    "logo": "/images/sponsors/iam.jpg",
+    "url": "#",
+    "tier": "silver",
+    "description": "Connecting and celebrating Indian communities in Melbourne.",
+    "createdAt": "2024-01-01T00:00:00Z"
+  }
+]

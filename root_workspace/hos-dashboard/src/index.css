@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  background: #0a0a1a;
+  color: #c8d6e5;
+  font-family: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+  font-size: 13px;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: #0a0a1a; }
+::-webkit-scrollbar-thumb { background: #1a1a3e; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #2a2a5e; }
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px #ef535044; border-color: #ef535066; }
+  50% { box-shadow: 0 0 24px #ef535099; border-color: #ef5350aa; }
+}
+@keyframes status-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.gate-armed { animation: glow-pulse 1.5s ease-in-out infinite; }
+.status-pulse { animation: status-blink 1.5s ease-in-out infinite; }

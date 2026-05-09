@@ -1,0 +1,80 @@
+# Dependencies
+/node_modules
+
+# Next.js build
+/.next/
+/out/
+
+# Testing
+/coverage
+/test-results
+/playwright-report
+/.playwright-mcp/
+
+# Environment
+.env
+.env.local
+.env.production
+.env*.local
+
+# TypeScript cache
+*.tsbuildinfo
+.eslintcache
+
+# Firebase
+/.firebase/
+.firebaserc
+
+# Docker
+/docker-data/
+/pgdata/
+
+# IDE
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Evidence/screenshots (testing artifacts)
+*.jpeg
+*.screenshot.*
+prod-*.jpeg
+evidence-*.jpeg
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Ignore local audio scratch files, but allow deployable video assets
+public/video/*.mp3
+public/video/*.MP3
+
+# Source data
+/scraped-data/
+
+# Agent system Docker volumes
+agent-system/.env
+agent-system/node_modules/
+
+# Local caches, logs, and temporary artifacts
+*.log
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+/.next_old/
+/tmp/
+/temp/
+/.cache/
+
+# build:export stash (orphan safety — if SIGKILL/power-loss leaves this behind,
+# the next build run auto-recovers it; ignore here so it can't be committed)
+/.admin-routes-stashed-during-export/

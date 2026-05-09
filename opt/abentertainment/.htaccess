@@ -1,0 +1,115 @@
+# AB Entertainment — Serve static export from out/ subdirectory
+# Hostinger Git auto-deploy places the full repo at public_html root.
+# This file transparently rewrites all requests to the out/ directory
+# where the Next.js static export lives.
+
+RewriteEngine On
+
+# Skip rewriting for requests already in out/
+RewriteCond %{REQUEST_URI} ^/out/ [NC]
+RewriteRule ^ - [L]
+
+# Deny access to hidden files/directories (.htaccess, .git, .env.*, etc.)
+RewriteRule (^|/)\. - [F,L]
+
+# Reverse proxy: forward /api/* requests to VPS Node.js server via PHP proxy
+# This allows admin login and other API calls to work without a separate API domain
+RewriteCond %{REQUEST_URI} ^/api/ [NC]
+RewriteRule ^api/(.*)$ api-proxy.php?__path=/api/$1 [QSA,L]
+
+# Reverse proxy: forward /uploads/* to VPS for admin-uploaded media files
+RewriteCond %{REQUEST_URI} ^/uploads/ [NC]
+RewriteRule ^uploads/(.*)$ api-proxy.php?__path=/uploads/$1 [QSA,L]
+
+# Reverse proxy: forward /uploads/* to VPS (admin-uploaded images)
+RewriteCond %{REQUEST_URI} ^/uploads/ [NC]
+RewriteRule ^uploads/(.*)$ api-proxy.php?__path=/uploads/$1 [QSA,L]
+
+# If the file exists directly in out/, serve it (static assets: JS, CSS, images, fonts)
+RewriteCond %{DOCUMENT_ROOT}/out/$1 -f
+RewriteRule ^(.*)$ out/$1 [L]
+
+# For route paths: serve index.html from the matching out/ subdirectory
+# Handles both /events and /events/ → out/events/index.html
+# This avoids the directory redirect that exposes /out/ in the URL
+RewriteCond %{DOCUMENT_ROOT}/out/$1/index.html -f
+RewriteRule ^(.*?)/?$ out/$1/index.html [L]
+
+# Fallback: event detail pages created after the last build don't have static HTML.
+# Proxy to VPS which renders them dynamically with live data.
+# Placed after the static-file rules so known events serve from out/ (fast).
+# No trailing slash — VPS standalone mode issues 308 redirect for trailing slashes.
+RewriteRule ^events/([^/]+)/?$ api-proxy.php?__path=/events/$1 [QSA,L]
+
+# Root URL fallback → serve out/index.html
+RewriteCond %{REQUEST_URI} ^/$
+RewriteRule ^$ out/index.html [L]
+
+# Custom 404: serve the Next.js 404 page
+ErrorDocument 404 /out/404.html
+
+# Security: block access to source/build/config files
+# Note: .json is intentionally excluded — out/data/events.json must be served for the search modal
+<FilesMatch "\.(ts|tsx|jsx|mjs|cjs|mts|cts|md|yml|yaml|lock|env|local)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# Block specific dangerous JSON config files at repo root
+<FilesMatch "^(package|package-lock|tsconfig|next-env|postcss\.config|tailwind\.config)\.json$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# Block access to source directories
+# Uses RewriteRule instead of RedirectMatch so these run AFTER the file-serving
+# rewrite rules above. On LiteSpeed, RedirectMatch (mod_alias) fires before
+# RewriteRule (mod_rewrite), which was blocking out/data/events.json.
+RewriteRule ^src(/.*)?$ - [F,L]
+RewriteRule ^node_modules(/.*)?$ - [F,L]
+RewriteRule ^\.git(/.*)?$ - [F,L]
+RewriteRule ^\.github(/.*)?$ - [F,L]
+RewriteRule ^\.next(/.*)?$ - [F,L]
+RewriteRule ^\.env(\..*)?$ - [F,L]
+RewriteRule ^data(/.*)?$ - [F,L]
+RewriteRule ^scripts(/.*)?$ - [F,L]
+RewriteRule ^docs(/.*)?$ - [F,L]
+RewriteRule ^e2e(/.*)?$ - [F,L]
+RewriteRule ^agent-system(/.*)?$ - [F,L]
+RewriteRule ^\.claude(/.*)?$ - [F,L]
+
+# Cache static assets
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/html "access plus 1 hour"
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType application/json "access plus 1 day"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/avif "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType video/mp4 "access plus 1 year"
+  ExpiresByType video/webm "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+
+# HSTS: enforce HTTPS for 1 year
+<IfModule mod_headers.c>
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# Compression
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>
