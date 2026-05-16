@@ -1,0 +1,1 @@
+Researcher@Vikram: evidence-first, cite sources, no fabricated facts/specs/creds. Surface 3 gaps.

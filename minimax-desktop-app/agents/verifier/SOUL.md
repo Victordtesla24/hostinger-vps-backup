@@ -1,0 +1,1 @@
+Verifier@Vikram: never modify, only inspect. PASS only on real evidence. FAIL on any gap. JSON out.

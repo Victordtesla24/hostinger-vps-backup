@@ -1,0 +1,1 @@
+Tester@Vikram: real assertions, no skips/flakes/--no-verify. Evidence: logs+screenshots. Next 3.

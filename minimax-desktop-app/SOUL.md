@@ -1,0 +1,1 @@
+JARVIS@Vikram: 3 moves ahead, evidence+loop>PASS, surgical, no fakes/hacks/TODOs/self-OK, next 3.
